@@ -1,0 +1,22 @@
+/**
+ * Digi — Supabase Client (Mobile)
+ * 
+ * ANON client ONLY — never use service role key in React Native.
+ * This client is safe to bundle in the app binary.
+ */
+import 'react-native-url-polyfill/dist/setup';
+import { createClient } from '@supabase/supabase-js';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import type { Database } from '@/types/database';
+
+const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL!;
+const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!;
+
+export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    storage: AsyncStorage,
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: false,
+  },
+});

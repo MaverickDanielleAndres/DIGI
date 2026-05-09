@@ -1,0 +1,69 @@
+{
+  "expo": {
+    "name": "Digi",
+    "slug": "digi",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/digilogo.png",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "scheme": "digi",
+    "splash": {
+      "image": "./assets/digilogo.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0A0806"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.digi.app",
+      "associatedDomains": ["applinks:digi.app"],
+      "infoPlist": {
+        "NSCameraUsageDescription": "Digi needs camera access to capture event memories.",
+        "NSMicrophoneUsageDescription": "Digi needs microphone for voice notes.",
+        "NSPhotoLibraryUsageDescription": "Digi needs photo library access to save your memories."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/digilogo.png",
+        "backgroundColor": "#0A0806"
+      },
+      "package": "com.digi.app",
+      "edgeToEdgeEnabled": true,
+      "predictiveBackGestureEnabled": false,
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            { "scheme": "https", "host": "digi.app", "pathPrefix": "/join" }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ]
+    },
+    "web": {
+      "favicon": "./assets/digilogo.png",
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-font",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow Digi to access your camera to capture event memories."
+        }
+      ],
+      "expo-notifications"
+    ],
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "__FILL_IN__"
+      }
+    }
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "name": "Digi",
+  "short_name": "Digi",
+  "description": "Collaborative disposable camera for your events",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0A0806",
+  "theme_color": "#0A0806",
+  "icons": [
+    {
+      "src": "/digilogo.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/digilogo.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
