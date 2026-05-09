@@ -25,7 +25,7 @@ export default function GuestsScreen() {
     Alert.alert('Remove Guest', 'Are you sure?', [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Remove', style: 'destructive', onPress: async () => {
-        await supabase.from('participants').update({ is_removed: true }).eq('id', guestId);
+        await supabase.from('participants').update({ is_removed: true } as never).eq('id', guestId);
         setGuests((g) => g.filter((p) => p.id !== guestId));
       }},
     ]);

@@ -50,9 +50,9 @@ export function PhotoViewerModal({ photo, eventId, onClose }: PhotoViewerModalPr
 
       const { error } = await supabase.from('reactions').insert({
         photo_id: photo.id,
-        participant_id: part.id,
+        participant_id: (part as any).id,
         reaction_type: type
-      });
+      } as any);
       if (error) throw error;
     } catch (e) {
       console.error(e);
@@ -63,7 +63,7 @@ export function PhotoViewerModal({ photo, eventId, onClose }: PhotoViewerModalPr
 
   const handleHide = async () => {
     try {
-      const { error } = await supabase.from('photos').update({ is_hidden: !photo.is_hidden }).eq('id', photo.id);
+      const { error } = await supabase.from('photos').update({ is_hidden: !photo.is_hidden } as never).eq('id', photo.id);
       if (error) throw error;
       Alert.alert('Success', `Photo is now ${photo.is_hidden ? 'visible' : 'hidden'} from guests.`);
       onClose(); // Will close and realtime update handles grid refresh

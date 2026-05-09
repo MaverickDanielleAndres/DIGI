@@ -82,7 +82,7 @@ export default function GuestJoinScreen() {
         user_id: userId,
         guest_nickname: nickname.trim(),
         role: 'participant'
-      });
+      } as any);
 
       // Ignore uniqueness constraint error if they already joined
       if (error && error.code !== '23505') {

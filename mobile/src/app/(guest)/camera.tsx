@@ -35,8 +35,8 @@ export default function GuestCameraScreen() {
         .single();
 
       if (settings) {
-        setShotLimit(settings.shot_limit_per_participant || 24);
-        setCameraStyle(settings.camera_style || 'disposable');
+        setShotLimit((settings as any).shot_limit_per_participant || 24);
+        setCameraStyle((settings as any).camera_style || 'disposable');
       }
 
       // Get participant record
@@ -48,8 +48,8 @@ export default function GuestCameraScreen() {
         .single();
 
       if (participant) {
-        setParticipantId(participant.id);
-        setShotsUsed(participant.shots_used || 0);
+        setParticipantId((participant as any).id);
+        setShotsUsed((participant as any).shots_used || 0);
       }
     } catch (e) {
       console.error(e);

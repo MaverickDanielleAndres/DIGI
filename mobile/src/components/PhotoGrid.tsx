@@ -58,12 +58,14 @@ export function PhotoGrid({ photos, isRevealed, onPhotoPress }: PhotoGridProps) 
 
   return (
     <FlashList
-      data={photos}
-      renderItem={renderItem}
-      keyExtractor={(item) => item.id}
-      numColumns={COLUMN_COUNT}
-      estimatedItemSize={ITEM_SIZE}
-      contentContainerStyle={s.listContent}
+      {...({
+        data: photos,
+        renderItem,
+        keyExtractor: (item: Photo) => item.id,
+        numColumns: COLUMN_COUNT,
+        estimatedItemSize: ITEM_SIZE,
+        contentContainerStyle: s.listContent
+      } as any)}
     />
   );
 }

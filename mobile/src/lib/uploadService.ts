@@ -26,7 +26,7 @@ export const UploadService = {
 
       // 1. Read file as base64
       const base64Data = await FileSystem.readAsStringAsync(uri, {
-        encoding: FileSystem.EncodingType.Base64,
+        encoding: 'base64' as any,
       });
 
       // 2. Generate storage path: {eventId}/{participantId}/{uuid}.jpg
@@ -56,17 +56,17 @@ export const UploadService = {
           longitude: longitude || null,
           is_approved: true, // Defaulting to true, assuming no strict moderation for now
           is_revealed: false,
-        })
+        } as any)
         .select()
         .single();
 
       if (recordError) throw recordError;
 
       // 5. Decrement shot safely via RPC
-      const { error: rpcError } = await supabase.rpc('decrement_shot_and_return', {
+      const { error: rpcError } = await supabase.rpc('decrement_shot_and_return' as any, {
         p_participant_id: participantId,
         p_event_id: eventId,
-      });
+      } as any);
 
       if (rpcError) throw rpcError;
 
@@ -76,7 +76,7 @@ export const UploadService = {
         event_id: eventId,
         photo_id: id,
         action: 'captured',
-      });
+      } as any);
 
       return { photoId: id, error: null };
     } catch (error) {

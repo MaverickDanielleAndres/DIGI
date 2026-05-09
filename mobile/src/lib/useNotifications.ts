@@ -20,8 +20,8 @@ export function useNotifications() {
   const [notification, setNotification] = useState<Notifications.Notification | undefined>(
     undefined
   );
-  const notificationListener = useRef<Notifications.Subscription>();
-  const responseListener = useRef<Notifications.Subscription>();
+  const notificationListener = useRef<any>(null);
+  const responseListener = useRef<any>(null);
 
   useEffect(() => {
     registerForPushNotificationsAsync().then(token => token && setExpoPushToken(token));
@@ -37,10 +37,10 @@ export function useNotifications() {
 
     return () => {
       if (notificationListener.current) {
-        Notifications.removeSubscription(notificationListener.current);
+        notificationListener.current.remove();
       }
       if (responseListener.current) {
-        Notifications.removeSubscription(responseListener.current);
+        responseListener.current.remove();
       }
     };
   }, []);

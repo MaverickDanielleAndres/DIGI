@@ -67,7 +67,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           display_name: displayName,
           account_type: 'personal',
           plan: 'free',
-        });
+        } as any);
       }
       return { error: null };
     } catch (error) {
@@ -84,7 +84,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           id: data.user.id,
           account_type: 'personal',
           plan: 'free',
-        });
+        } as any);
       }
       return { error: null };
     } catch (error) {

@@ -170,7 +170,7 @@ export const useEventStore = create<EventState>((set, get) => ({
     try {
       const { error } = await supabase
         .from('events')
-        .update(updates as any)
+        .update(updates as never)
         .eq('id', id);
       if (error) return { error };
 
