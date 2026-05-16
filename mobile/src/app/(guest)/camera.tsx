@@ -19,6 +19,9 @@ export default function GuestCameraScreen() {
   const [shotsUsed, setShotsUsed] = useState(0);
   const [shotLimit, setShotLimit] = useState(24);
   const [cameraStyle, setCameraStyle] = useState('disposable');
+  const [cooldownSeconds, setCooldownSeconds] = useState(0);
+  const [allowFrontCamera, setAllowFrontCamera] = useState(true);
+  const [allowFlash, setAllowFlash] = useState(true);
 
   useEffect(() => {
     if (!eventId || !session) return;
@@ -30,13 +33,16 @@ export default function GuestCameraScreen() {
       // Get event settings
       const { data: settings } = await supabase
         .from('event_settings')
-        .select('shot_limit_per_participant, camera_style')
+        .select('shot_limit_per_participant, camera_style, cooldown_seconds, allow_front_camera, allow_flash')
         .eq('event_id', eventId)
         .single();
 
       if (settings) {
         setShotLimit((settings as any).shot_limit_per_participant || 24);
         setCameraStyle((settings as any).camera_style || 'disposable');
+        setCooldownSeconds((settings as any).cooldown_seconds || 0);
+        setAllowFrontCamera((settings as any).allow_front_camera ?? true);
+        setAllowFlash((settings as any).allow_flash ?? true);
       }
 
       // Get participant record
@@ -82,6 +88,9 @@ export default function GuestCameraScreen() {
         shotLimit={shotLimit}
         initialShotsUsed={shotsUsed}
         cameraStyle={cameraStyle}
+        cooldownSeconds={cooldownSeconds}
+        allowFrontCamera={allowFrontCamera}
+        allowFlash={allowFlash}
       />
       
       <Pressable 

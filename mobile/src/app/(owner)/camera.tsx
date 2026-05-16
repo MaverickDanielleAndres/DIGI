@@ -33,6 +33,9 @@ export default function CameraTab() {
   const participantId = session?.user.id || 'anonymous';
   const shotLimit = currentSettings?.shot_limit_per_participant || 24;
   const cameraStyle = currentSettings?.camera_style || 'disposable';
+  const cooldownSeconds = currentSettings?.cooldown_seconds || 0;
+  const allowFrontCamera = currentSettings?.allow_front_camera ?? true;
+  const allowFlash = currentSettings?.allow_flash ?? true;
 
   return (
     <CameraViewfinder 
@@ -41,6 +44,9 @@ export default function CameraTab() {
       shotLimit={shotLimit}
       initialShotsUsed={0} // Typically fetched from participant record
       cameraStyle={cameraStyle}
+      cooldownSeconds={cooldownSeconds}
+      allowFrontCamera={allowFrontCamera}
+      allowFlash={allowFlash}
     />
   );
 }

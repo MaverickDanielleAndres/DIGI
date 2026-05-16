@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Modal, Pressable, ScrollView, Alert } from 'react-native';
 import { Image } from 'expo-image';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
@@ -28,12 +28,31 @@ export function PhotoViewerModal({ photo, eventId, onClose }: PhotoViewerModalPr
   const currentEvent = useEventStore((s) => s.currentEvent);
   const reactions = useAlbumStore((s) => photo ? s.reactions[photo.id] || [] : []);
   const [submitting, setSubmitting] = useState(false);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
 
   const isOwner = currentEvent && session && currentEvent.owner_id === session.user.id;
 
   if (!photo) return null;
 
-  const { data } = supabase.storage.from('photos').getPublicUrl(photo.storage_path);
+  useEffect(() => {
+    let isActive = true;
+    setImageUrl(null);
+
+    const loadSignedUrl = async () => {
+      const { data: signed, error } = await supabase.storage
+        .from('photos')
+        .createSignedUrl(photo.storage_path, 60 * 60);
+
+      if (isActive && !error) {
+        setImageUrl(signed?.signedUrl ?? null);
+      }
+    };
+
+    loadSignedUrl();
+    return () => {
+      isActive = false;
+    };
+  }, [photo.id, photo.storage_path]);
 
   const handleReaction = async (type: ReactionType) => {
     if (!session || submitting) return;
@@ -102,7 +121,7 @@ export function PhotoViewerModal({ photo, eventId, onClose }: PhotoViewerModalPr
 
         <View style={s.imageContainer}>
           <Image
-            source={{ uri: data.publicUrl }}
+            source={imageUrl ? { uri: imageUrl } : undefined}
             style={[s.image, photo.is_hidden && s.hiddenImage]}
             contentFit="contain"
           />

@@ -1,6 +1,6 @@
 import { supabase } from './supabase';
 import * as FileSystem from 'expo-file-system';
-import { decode } from 'base64-arraybuffer';
+import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import 'react-native-get-random-values';
 import { v4 as uuidv4 } from 'uuid';
 import type { UploadStatus } from '@/types';
@@ -13,6 +13,7 @@ interface UploadTask {
   cameraStyle: string;
   latitude?: number;
   longitude?: number;
+  capturedAt?: string;
 }
 
 /**
@@ -22,63 +23,74 @@ interface UploadTask {
 export const UploadService = {
   async processUpload(task: UploadTask): Promise<{ photoId: string | null; error: Error | null }> {
     try {
-      const { id, uri, eventId, participantId, cameraStyle, latitude, longitude } = task;
+      const { id, uri, eventId, participantId, cameraStyle, latitude, longitude, capturedAt } = task;
 
-      // 1. Read file as base64
-      const base64Data = await FileSystem.readAsStringAsync(uri, {
-        encoding: 'base64' as any,
+      // 1. Compress + convert to WebP before upload
+      const compressed = await manipulateAsync(
+        uri,
+        [{ resize: { width: 1920 } }],
+        { compress: 0.82, format: SaveFormat.WEBP }
+      );
+
+      const fileInfo = await FileSystem.getInfoAsync(compressed.uri, { size: true });
+      const fileSizeBytes = fileInfo.size ?? null;
+      const mimeType = 'image/webp';
+
+      // 2. Request a signed upload URL from Edge Function
+      const { data: signedData, error: signedError } = await supabase.functions.invoke(
+        'generate-upload-url',
+        {
+          body: {
+            eventId,
+            participantId,
+            fileSizeBytes,
+            mimeType,
+            fileNameHint: `${id}.webp`,
+          },
+        }
+      );
+
+      if (signedError || !signedData?.signedUrl || !signedData?.path) {
+        throw signedError || new Error('Failed to get signed upload URL');
+      }
+
+      // 3. Upload to signed URL
+      const uploadResult = await FileSystem.uploadAsync(signedData.signedUrl, compressed.uri, {
+        httpMethod: 'PUT',
+        uploadType: FileSystem.FileSystemUploadType.BINARY_CONTENT,
+        headers: {
+          'Content-Type': mimeType,
+        },
       });
 
-      // 2. Generate storage path: {eventId}/{participantId}/{uuid}.jpg
-      const storagePath = `${eventId}/${participantId}/${id}.jpg`;
+      if (uploadResult.status < 200 || uploadResult.status >= 300) {
+        throw new Error(`Signed upload failed (${uploadResult.status})`);
+      }
 
-      // 3. Upload to Supabase Storage
-      const { error: uploadError } = await supabase.storage
-        .from('photos')
-        .upload(storagePath, decode(base64Data), {
-          contentType: 'image/jpeg',
-          upsert: true,
-        });
+      // 4. Finalize upload + create DB record server-side
+      const { data: finalizeData, error: finalizeError } = await supabase.functions.invoke(
+        'finalize-upload',
+        {
+          body: {
+            eventId,
+            participantId,
+            storagePath: signedData.path,
+            cameraStyle,
+            width: compressed.width,
+            height: compressed.height,
+            fileSizeBytes,
+            latitude: latitude ?? null,
+            longitude: longitude ?? null,
+            capturedAt: capturedAt ?? new Date().toISOString(),
+          },
+        }
+      );
 
-      if (uploadError) throw uploadError;
+      if (finalizeError || !finalizeData?.photoId) {
+        throw finalizeError || new Error('Finalize upload failed');
+      }
 
-      // 4. Create the photo record
-      const { data: photoRecord, error: recordError } = await supabase
-        .from('photos')
-        .insert({
-          id, // use the same UUID for the photo record
-          event_id: eventId,
-          uploader_id: participantId,
-          storage_path: storagePath,
-          upload_status: 'complete',
-          camera_style_used: cameraStyle,
-          latitude: latitude || null,
-          longitude: longitude || null,
-          is_approved: true, // Defaulting to true, assuming no strict moderation for now
-          is_revealed: false,
-        } as any)
-        .select()
-        .single();
-
-      if (recordError) throw recordError;
-
-      // 5. Decrement shot safely via RPC
-      const { error: rpcError } = await supabase.rpc('decrement_shot_and_return' as any, {
-        p_participant_id: participantId,
-        p_event_id: eventId,
-      } as any);
-
-      if (rpcError) throw rpcError;
-
-      // 6. Log shot usage
-      await supabase.from('shot_usage').insert({
-        participant_id: participantId,
-        event_id: eventId,
-        photo_id: id,
-        action: 'captured',
-      } as any);
-
-      return { photoId: id, error: null };
+      return { photoId: finalizeData.photoId as string, error: null };
     } catch (error) {
       console.error('Upload failed:', error);
       return { photoId: null, error: error as Error };

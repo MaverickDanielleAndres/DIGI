@@ -4,7 +4,6 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Haptics from 'expo-haptics';
 import Animated, { useSharedValue, useAnimatedStyle, withSequence, withSpring, withTiming } from 'react-native-reanimated';
 import { useCameraStore } from '@/store/camera.store';
-import { supabase } from '@/lib/supabase';
 import { colors, fonts, radius, springs } from '@/theme';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -16,13 +15,27 @@ interface CameraViewfinderProps {
   shotLimit: number;
   initialShotsUsed: number;
   cameraStyle: string;
+  cooldownSeconds?: number;
+  allowFrontCamera?: boolean;
+  allowFlash?: boolean;
 }
 
-export function CameraViewfinder({ eventId, participantId, shotLimit, initialShotsUsed, cameraStyle }: CameraViewfinderProps) {
+export function CameraViewfinder({
+  eventId,
+  participantId,
+  shotLimit,
+  initialShotsUsed,
+  cameraStyle,
+  cooldownSeconds = 0,
+  allowFrontCamera = true,
+  allowFlash = true,
+}: CameraViewfinderProps) {
   const [permission, requestPermission] = useCameraPermissions();
   const [facing, setFacing] = useState<'back' | 'front'>('back');
   const [flash, setFlash] = useState<'off' | 'on' | 'auto'>('off');
   const [shotsUsed, setShotsUsed] = useState(initialShotsUsed);
+  const [cooldownLeft, setCooldownLeft] = useState(0);
+  const [cooldownUntil, setCooldownUntil] = useState<number | null>(null);
   
   const cameraRef = useRef<CameraView>(null);
   const addPhotoToQueue = useCameraStore((s) => s.addPhotoToQueue);
@@ -40,6 +53,20 @@ export function CameraViewfinder({ eventId, participantId, shotLimit, initialSho
     }, 5000); // Attempt sync every 5s if there are items in queue
     return () => clearInterval(interval);
   }, [eventId, participantId, cameraStyle]);
+
+  useEffect(() => {
+    if (!cooldownUntil) return;
+
+    const tick = () => {
+      const secondsLeft = Math.max(0, Math.ceil((cooldownUntil - Date.now()) / 1000));
+      setCooldownLeft(secondsLeft);
+      if (secondsLeft === 0) setCooldownUntil(null);
+    };
+
+    tick();
+    const interval = setInterval(tick, 250);
+    return () => clearInterval(interval);
+  }, [cooldownUntil]);
 
   if (!permission) {
     return <View style={s.center}><Text style={s.text}>Loading camera...</Text></View>;
@@ -61,6 +88,11 @@ export function CameraViewfinder({ eventId, participantId, shotLimit, initialSho
   const handleCapture = async () => {
     if (shotsUsed >= shotLimit) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      return;
+    }
+
+    if (cooldownLeft > 0) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
       return;
     }
 
@@ -88,6 +120,9 @@ export function CameraViewfinder({ eventId, participantId, shotLimit, initialSho
 
     // Update local state instantly
     setShotsUsed((prev) => prev + 1);
+    if (cooldownSeconds > 0) {
+      setCooldownUntil(Date.now() + cooldownSeconds * 1000);
+    }
 
     try {
       // Actually take the picture
@@ -111,11 +146,13 @@ export function CameraViewfinder({ eventId, participantId, shotLimit, initialSho
   };
 
   const toggleFacing = () => {
+    if (!allowFrontCamera) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setFacing(f => f === 'back' ? 'front' : 'back');
   };
 
   const toggleFlash = () => {
+    if (!allowFlash) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setFlash(f => f === 'off' ? 'on' : f === 'on' ? 'auto' : 'off');
   };
@@ -123,6 +160,7 @@ export function CameraViewfinder({ eventId, participantId, shotLimit, initialSho
   const shutterStyle = useAnimatedStyle(() => ({ transform: [{ scale: shutterScale.value }] }));
   const flashStyle = useAnimatedStyle(() => ({ opacity: flashOpacity.value }));
   const counterStyle = useAnimatedStyle(() => ({ transform: [{ scale: counterScale.value }] }));
+  const canCapture = shotsUsed < shotLimit && cooldownLeft === 0;
 
   return (
     <View style={s.root}>
@@ -149,35 +187,50 @@ export function CameraViewfinder({ eventId, participantId, shotLimit, initialSho
         <View style={s.styleBadge}>
           <Text style={s.styleText}>{cameraStyle.replace('_', ' ').toUpperCase()}</Text>
         </View>
-        <Animated.View style={[s.counterWrap, counterStyle]}>
-          <Text style={[s.counterNum, shotsUsed >= shotLimit && s.counterEmpty]}>
-            {Math.max(0, shotLimit - shotsUsed)}
-          </Text>
-          <Text style={s.counterLabel}>left</Text>
-        </Animated.View>
+        <View style={s.counterStack}>
+          {cooldownLeft > 0 && (
+            <View style={s.cooldownBadge}>
+              <Text style={s.cooldownText}>COOLDOWN {cooldownLeft}s</Text>
+            </View>
+          )}
+          <Animated.View style={[s.counterWrap, counterStyle]}>
+            <Text style={[s.counterNum, shotsUsed >= shotLimit && s.counterEmpty]}>
+              {Math.max(0, shotLimit - shotsUsed)}
+            </Text>
+            <Text style={s.counterLabel}>left</Text>
+          </Animated.View>
+        </View>
       </View>
 
       {/* Controls */}
       <View style={s.controls}>
         <View style={s.controlsSide}>
-          <Pressable style={s.iconBtn} onPress={toggleFlash}>
-            <Text style={s.iconEmoji}>{flash === 'off' ? '📴' : flash === 'on' ? '⚡' : '✨'}</Text>
-          </Pressable>
+          {allowFlash ? (
+            <Pressable style={s.iconBtn} onPress={toggleFlash}>
+              <Text style={s.iconEmoji}>{flash === 'off' ? '📴' : flash === 'on' ? '⚡' : '✨'}</Text>
+            </Pressable>
+          ) : (
+            <View style={s.iconSpacer} />
+          )}
         </View>
         
         <Animated.View style={shutterStyle}>
           <Pressable 
-            style={[s.shutter, shotsUsed >= shotLimit && s.shutterDisabled]} 
+            style={[s.shutter, !canCapture && s.shutterDisabled]} 
             onPress={handleCapture}
           >
-            <View style={[s.shutterInner, shotsUsed >= shotLimit && s.shutterInnerDisabled]} />
+            <View style={[s.shutterInner, !canCapture && s.shutterInnerDisabled]} />
           </Pressable>
         </Animated.View>
 
         <View style={s.controlsSide}>
-          <Pressable style={s.iconBtn} onPress={toggleFacing}>
-            <Text style={s.iconEmoji}>🔄</Text>
-          </Pressable>
+          {allowFrontCamera ? (
+            <Pressable style={s.iconBtn} onPress={toggleFacing}>
+              <Text style={s.iconEmoji}>🔄</Text>
+            </Pressable>
+          ) : (
+            <View style={s.iconSpacer} />
+          )}
         </View>
       </View>
 
@@ -208,6 +261,9 @@ const s = StyleSheet.create({
   topBar: { position: 'absolute', top: 60, left: 24, right: 24, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', zIndex: 15 },
   styleBadge: { backgroundColor: colors.void + 'CC', paddingHorizontal: 12, paddingVertical: 6, borderRadius: radius.pill },
   styleText: { fontFamily: fonts.bodySemiBold, fontSize: 10, letterSpacing: 2, color: colors.amber },
+  counterStack: { alignItems: 'flex-end', gap: 6 },
+  cooldownBadge: { backgroundColor: colors.void + 'CC', paddingHorizontal: 10, paddingVertical: 6, borderRadius: radius.pill, borderWidth: 1, borderColor: colors.amber + '50' },
+  cooldownText: { fontFamily: fonts.bodySemiBold, fontSize: 10, letterSpacing: 1, color: colors.amber },
   counterWrap: { backgroundColor: colors.void + 'CC', paddingHorizontal: 16, paddingVertical: 8, borderRadius: radius.md, alignItems: 'center' },
   counterNum: { fontFamily: fonts.mono, fontSize: 28, color: colors.amber },
   counterEmpty: { color: colors.coral },
@@ -217,6 +273,7 @@ const s = StyleSheet.create({
   controlsSide: { width: 56, alignItems: 'center' },
   iconBtn: { width: 56, height: 56, borderRadius: 28, backgroundColor: colors.void + '80', justifyContent: 'center', alignItems: 'center' },
   iconEmoji: { fontSize: 24 },
+  iconSpacer: { width: 56, height: 56 },
   
   shutter: { width: 84, height: 84, borderRadius: 42, borderWidth: 4, borderColor: colors.cream, justifyContent: 'center', alignItems: 'center', backgroundColor: 'transparent' },
   shutterDisabled: { borderColor: colors.ash },
