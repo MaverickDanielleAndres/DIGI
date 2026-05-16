@@ -46,8 +46,9 @@ interface EventState {
 
   // API actions
   fetchEvents: () => Promise<void>;
-  createEvent: () => Promise<{ event: Event | null; error: Error | null }>;
+  createEvent: (isDraft?: boolean) => Promise<{ event: Event | null; error: Error | null }>;
   updateEvent: (id: string, updates: Partial<Event>) => Promise<{ error: Error | null }>;
+  updateSettings: (id: string, updates: Partial<EventSettings>) => Promise<{ error: Error | null }>;
   endEvent: (id: string) => Promise<{ error: Error | null }>;
 }
 
@@ -97,7 +98,7 @@ export const useEventStore = create<EventState>((set, get) => ({
     }
   },
 
-  createEvent: async () => {
+  createEvent: async (isDraft = false) => {
     const { wizard } = get();
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -114,7 +115,7 @@ export const useEventStore = create<EventState>((set, get) => ({
           starts_at: wizard.startsAt,
           ends_at: wizard.endsAt,
           location: wizard.location || null,
-          status: 'active',
+          status: isDraft ? 'draft' : 'active',
         } as any)
         .select()
         .single();
@@ -177,6 +178,23 @@ export const useEventStore = create<EventState>((set, get) => ({
       set((s) => ({
         events: s.events.map((e) => (e.id === id ? { ...e, ...updates } : e)),
         currentEvent: s.currentEvent?.id === id ? { ...s.currentEvent, ...updates } : s.currentEvent,
+      }));
+      return { error: null };
+    } catch (error) {
+      return { error: error as Error };
+    }
+  },
+
+  updateSettings: async (id, updates) => {
+    try {
+      const { error } = await supabase
+        .from('event_settings')
+        .update(updates as never)
+        .eq('event_id', id);
+      if (error) return { error };
+
+      set((s) => ({
+        currentSettings: s.currentSettings?.event_id === id ? { ...s.currentSettings, ...updates } : s.currentSettings,
       }));
       return { error: null };
     } catch (error) {

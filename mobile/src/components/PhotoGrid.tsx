@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { View, StyleSheet, Dimensions, Pressable, Text } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { Image } from 'expo-image';
@@ -18,9 +18,39 @@ interface PhotoGridProps {
 }
 
 export function PhotoGrid({ photos, isRevealed, onPhotoPress }: PhotoGridProps) {
-  
-  const renderItem = ({ item, index }: { item: Photo; index: number }) => {
+  const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    let isActive = true;
     
+    const loadUrls = async () => {
+      // Filter out photos that are already in signedUrls or are mystery placeholders
+      const pathsToFetch = photos
+        .filter(p => (isRevealed || p.is_revealed) && !signedUrls[p.storage_path])
+        .map(p => p.storage_path);
+        
+      if (pathsToFetch.length === 0) return;
+
+      const { data, error } = await supabase.storage
+        .from('photos')
+        .createSignedUrls(pathsToFetch, 60 * 60); // 1 hour expiry
+
+      if (isActive && !error && data) {
+        setSignedUrls(prev => {
+          const next = { ...prev };
+          data.forEach(item => {
+            if (item.path && item.signedUrl) next[item.path as string] = item.signedUrl;
+          });
+          return next;
+        });
+      }
+    };
+
+    loadUrls();
+    return () => { isActive = false; };
+  }, [photos, isRevealed]);
+
+  const renderItem = ({ item, index }: { item: Photo; index: number }) => {
     // Mystery placeholder if not revealed
     if (!isRevealed && !item.is_revealed) {
       return (
@@ -30,19 +60,21 @@ export function PhotoGrid({ photos, isRevealed, onPhotoPress }: PhotoGridProps) 
       );
     }
 
-    // Resolving public URL using Supabase
-    // If photos are private, we might need a signed URL, but assuming public for now
-    const { data } = supabase.storage.from('photos').getPublicUrl(item.storage_path);
+    const uri = signedUrls[item.storage_path];
 
     return (
       <Pressable style={s.itemContainer} onPress={() => onPhotoPress(item, index)}>
-        <Image
-          source={{ uri: data.publicUrl }}
-          style={s.image}
-          contentFit="cover"
-          transition={200}
-          cachePolicy="disk"
-        />
+        {uri ? (
+          <Image
+            source={{ uri }}
+            style={s.image}
+            contentFit="cover"
+            transition={200}
+            cachePolicy="disk"
+          />
+        ) : (
+          <View style={[s.itemContainer, s.mysteryContainer]} />
+        )}
       </Pressable>
     );
   };

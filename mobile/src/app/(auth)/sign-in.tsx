@@ -13,27 +13,49 @@ import { colors, fonts, radius } from '@/theme';
 
 export default function SignInScreen() {
   const router = useRouter();
-  const signInWithEmail = useAuthStore((s) => s.signInWithEmail);
+  const { signInWithEmail, signInWithOtp, signInWithApple, signInWithGoogle } = useAuthStore();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isMagicLinkMode, setIsMagicLinkMode] = useState(false);
 
   const handleSignIn = async () => {
-    if (!email.trim() || !password.trim()) {
-      Alert.alert('Missing fields', 'Please enter your email and password.');
+    if (!email.trim()) {
+      Alert.alert('Missing fields', 'Please enter your email.');
+      return;
+    }
+
+    if (!isMagicLinkMode && !password.trim()) {
+      Alert.alert('Missing fields', 'Please enter your password.');
       return;
     }
 
     setIsSubmitting(true);
-    const { error } = await signInWithEmail(email.trim(), password);
+    let error;
+
+    if (isMagicLinkMode) {
+      const res = await signInWithOtp(email.trim());
+      error = res.error;
+      if (!error) {
+        Alert.alert('Check your email', 'We sent you a magic link to sign in.');
+      }
+    } else {
+      const res = await signInWithEmail(email.trim(), password);
+      error = res.error;
+      if (!error) router.replace('/(owner)/home');
+    }
+
     setIsSubmitting(false);
 
     if (error) {
       Alert.alert('Sign in failed', error.message);
-    } else {
-      router.replace('/(owner)/home');
     }
+  };
+
+  const handleSocialSignIn = async (provider: 'apple' | 'google') => {
+    Alert.alert('Coming Soon', `${provider} sign-in will be available soon.`);
+    // TODO: Implement actual tokens from expo-auth-session or expo-apple-authentication
   };
 
   return (
@@ -63,17 +85,19 @@ export default function SignInScreen() {
             />
           </Animated.View>
 
-          <Animated.View entering={FadeInDown.delay(400)}>
-            <Text style={styles.label}>PASSWORD</Text>
-            <TextInput
-              style={styles.input}
-              value={password}
-              onChangeText={setPassword}
-              placeholder="Your password"
-              placeholderTextColor={colors.ash}
-              secureTextEntry
-            />
-          </Animated.View>
+          {!isMagicLinkMode && (
+            <Animated.View entering={FadeInDown.delay(400)}>
+              <Text style={styles.label}>PASSWORD</Text>
+              <TextInput
+                style={styles.input}
+                value={password}
+                onChangeText={setPassword}
+                placeholder="Your password"
+                placeholderTextColor={colors.ash}
+                secureTextEntry
+              />
+            </Animated.View>
+          )}
         </View>
 
         <Animated.View entering={FadeInDown.delay(500)}>
@@ -83,8 +107,31 @@ export default function SignInScreen() {
             disabled={isSubmitting}
           >
             <Text style={styles.ctaText}>
-              {isSubmitting ? 'Signing in...' : 'Sign In'}
+              {isSubmitting ? 'Sending...' : (isMagicLinkMode ? 'Send Magic Link' : 'Sign In')}
             </Text>
+          </Pressable>
+        </Animated.View>
+
+        <Animated.View entering={FadeInDown.delay(600)} style={styles.toggleMode}>
+          <Pressable onPress={() => setIsMagicLinkMode(!isMagicLinkMode)}>
+            <Text style={styles.toggleText}>
+              {isMagicLinkMode ? 'Sign in with password instead' : 'Use a magic link instead'}
+            </Text>
+          </Pressable>
+        </Animated.View>
+
+        <Animated.View entering={FadeInDown.delay(700)}>
+          <View style={styles.divider}>
+            <View style={styles.line} />
+            <Text style={styles.orText}>OR</Text>
+            <View style={styles.line} />
+          </View>
+
+          <Pressable style={styles.socialBtn} onPress={() => handleSocialSignIn('apple')}>
+            <Text style={styles.socialText}>Continue with Apple</Text>
+          </Pressable>
+          <Pressable style={styles.socialBtn} onPress={() => handleSocialSignIn('google')}>
+            <Text style={styles.socialText}>Continue with Google</Text>
           </Pressable>
         </Animated.View>
 
@@ -104,13 +151,20 @@ const styles = StyleSheet.create({
   scroll: { flexGrow: 1, justifyContent: 'center', paddingHorizontal: 24, paddingVertical: 40 },
   tag: { fontFamily: fonts.bodySemiBold, fontSize: 12, letterSpacing: 2.4, color: colors.amber, marginBottom: 12 },
   title: { fontFamily: fonts.display, fontSize: 38, lineHeight: 42, color: colors.cream, marginBottom: 36, letterSpacing: -0.76 },
-  form: { gap: 20, marginBottom: 32 },
+  form: { gap: 20, marginBottom: 24 },
   label: { fontFamily: fonts.bodySemiBold, fontSize: 11, letterSpacing: 1.5, color: colors.parchment, marginBottom: 8 },
   input: { backgroundColor: colors.charcoal, borderWidth: 1, borderColor: colors.smoke, borderRadius: radius.md, paddingHorizontal: 16, paddingVertical: 14, fontFamily: fonts.body, fontSize: 15, color: colors.cream },
   cta: { backgroundColor: colors.amber, height: 56, borderRadius: radius.md, justifyContent: 'center', alignItems: 'center' },
   ctaDisabled: { opacity: 0.6 },
   ctaText: { fontFamily: fonts.headingSemiBold, fontSize: 16, color: colors.void },
-  switchAuth: { marginTop: 20, alignItems: 'center' },
+  toggleMode: { alignItems: 'center', marginTop: 16 },
+  toggleText: { fontFamily: fonts.bodyMedium, color: colors.parchment, fontSize: 14 },
+  divider: { flexDirection: 'row', alignItems: 'center', marginVertical: 32 },
+  line: { flex: 1, height: 1, backgroundColor: colors.smoke },
+  orText: { color: colors.ash, fontFamily: fonts.bodySemiBold, paddingHorizontal: 16, fontSize: 12 },
+  socialBtn: { backgroundColor: colors.charcoal, borderWidth: 1, borderColor: colors.smoke, height: 56, borderRadius: radius.md, justifyContent: 'center', alignItems: 'center', marginBottom: 16 },
+  socialText: { fontFamily: fonts.headingSemiBold, fontSize: 15, color: colors.cream },
+  switchAuth: { marginTop: 24, alignItems: 'center' },
   switchText: { fontFamily: fonts.body, fontSize: 14, color: colors.parchment },
   switchLink: { color: colors.amber, fontFamily: fonts.bodyMedium },
   grain: { ...StyleSheet.absoluteFillObject, backgroundColor: colors.filmGrain, zIndex: 10, pointerEvents: 'none' },

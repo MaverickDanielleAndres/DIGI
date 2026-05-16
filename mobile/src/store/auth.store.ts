@@ -22,6 +22,10 @@ interface AuthState {
   setOnboarded: (onboarded: boolean) => void;
   signInWithEmail: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUpWithEmail: (email: string, password: string, displayName: string) => Promise<{ error: Error | null }>;
+  signInWithOtp: (email: string) => Promise<{ error: Error | null }>;
+  verifyOtp: (email: string, token: string) => Promise<{ error: Error | null }>;
+  signInWithApple: (identityToken: string) => Promise<{ error: Error | null }>;
+  signInWithGoogle: (idToken: string) => Promise<{ error: Error | null }>;
   signInAnonymously: () => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   fetchProfile: () => Promise<void>;
@@ -68,6 +72,76 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           account_type: 'personal',
           plan: 'free',
         } as any);
+      }
+      return { error: null };
+    } catch (error) {
+      return { error: error as Error };
+    }
+  },
+
+  signInWithOtp: async (email) => {
+    try {
+      const { error } = await supabase.auth.signInWithOtp({ email });
+      return { error };
+    } catch (error) {
+      return { error: error as Error };
+    }
+  },
+
+  verifyOtp: async (email, token) => {
+    try {
+      const { data, error } = await supabase.auth.verifyOtp({ email, token, type: 'magiclink' });
+      if (error) return { error };
+      if (data.user) {
+        // Create user if not exists
+        await supabase.from('users').upsert({
+          id: data.user.id,
+          email,
+          account_type: 'personal',
+          plan: 'free',
+        } as any, { onConflict: 'id' });
+      }
+      return { error: null };
+    } catch (error) {
+      return { error: error as Error };
+    }
+  },
+
+  signInWithApple: async (identityToken) => {
+    try {
+      const { data, error } = await supabase.auth.signInWithIdToken({
+        provider: 'apple',
+        token: identityToken,
+      });
+      if (error) return { error };
+      if (data.user) {
+        await supabase.from('users').upsert({
+          id: data.user.id,
+          email: data.user.email,
+          account_type: 'personal',
+          plan: 'free',
+        } as any, { onConflict: 'id' });
+      }
+      return { error: null };
+    } catch (error) {
+      return { error: error as Error };
+    }
+  },
+
+  signInWithGoogle: async (idToken) => {
+    try {
+      const { data, error } = await supabase.auth.signInWithIdToken({
+        provider: 'google',
+        token: idToken,
+      });
+      if (error) return { error };
+      if (data.user) {
+        await supabase.from('users').upsert({
+          id: data.user.id,
+          email: data.user.email,
+          account_type: 'personal',
+          plan: 'free',
+        } as any, { onConflict: 'id' });
       }
       return { error: null };
     } catch (error) {

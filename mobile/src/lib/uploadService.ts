@@ -32,8 +32,8 @@ export const UploadService = {
         { compress: 0.82, format: SaveFormat.WEBP }
       );
 
-      const fileInfo = await FileSystem.getInfoAsync(compressed.uri, { size: true });
-      const fileSizeBytes = fileInfo.size ?? null;
+      const fileInfo = await FileSystem.getInfoAsync(compressed.uri);
+      const fileSizeBytes = fileInfo.exists ? fileInfo.size : null;
       const mimeType = 'image/webp';
 
       // 2. Request a signed upload URL from Edge Function
@@ -57,7 +57,6 @@ export const UploadService = {
       // 3. Upload to signed URL
       const uploadResult = await FileSystem.uploadAsync(signedData.signedUrl, compressed.uri, {
         httpMethod: 'PUT',
-        uploadType: FileSystem.FileSystemUploadType.BINARY_CONTENT,
         headers: {
           'Content-Type': mimeType,
         },

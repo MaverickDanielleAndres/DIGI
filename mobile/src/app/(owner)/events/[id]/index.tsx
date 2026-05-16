@@ -80,6 +80,17 @@ export default function EventDashboard() {
           <Text style={s.actionText}>Guests</Text>
         </Pressable>
       </View>
+      <View style={[s.actions, { marginBottom: 32 }]}>
+        <Pressable style={s.actionBtn} onPress={() => router.push(`/(owner)/events/${id}/queue`)}>
+          <Text style={s.actionEmoji}>🛡️</Text>
+          <Text style={s.actionText}>Queue</Text>
+        </Pressable>
+        <Pressable style={s.actionBtn} onPress={() => router.push(`/(owner)/events/${id}/projector`)}>
+          <Text style={s.actionEmoji}>📺</Text>
+          <Text style={s.actionText}>Projector</Text>
+        </Pressable>
+        <View style={s.actionBtn} pointerEvents="none" />
+      </View>
 
       {/* Gamification / Leaderboard */}
       <Text style={s.sectionTitle}>TOP PHOTOGRAPHERS</Text>

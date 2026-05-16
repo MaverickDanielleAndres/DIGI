@@ -21,12 +21,17 @@ export default function GuestsScreen() {
     });
   }, [id]);
 
-  const handleRemove = (guestId: string) => {
-    Alert.alert('Remove Guest', 'Are you sure?', [
+  const handleManage = (guest: Participant) => {
+    Alert.alert('Manage Guest', `Manage ${guest.guest_nickname || 'Guest'}`, [
       { text: 'Cancel', style: 'cancel' },
+      { text: guest.role === 'co_host' ? 'Demote to Guest' : 'Make Co-host', onPress: async () => {
+        const newRole = guest.role === 'co_host' ? 'participant' : 'co_host';
+        await supabase.from('participants').update({ role: newRole } as never).eq('id', guest.id);
+        setGuests((g) => g.map((p) => p.id === guest.id ? { ...p, role: newRole } as Participant : p));
+      }},
       { text: 'Remove', style: 'destructive', onPress: async () => {
-        await supabase.from('participants').update({ is_removed: true } as never).eq('id', guestId);
-        setGuests((g) => g.filter((p) => p.id !== guestId));
+        await supabase.from('participants').update({ is_removed: true } as never).eq('id', guest.id);
+        setGuests((g) => g.filter((p) => p.id !== guest.id));
       }},
     ]);
   };
@@ -46,8 +51,8 @@ export default function GuestsScreen() {
               <Text style={s.meta}>{g.role} · {g.shots_used} shots</Text>
             </View>
             {g.role !== 'owner' && (
-              <Pressable style={s.removeBtn} onPress={() => handleRemove(g.id)}>
-                <Text style={s.removeText}>✕</Text>
+              <Pressable style={s.removeBtn} onPress={() => handleManage(g)}>
+                <Text style={s.removeText}>⚙️</Text>
               </Pressable>
             )}
           </View>

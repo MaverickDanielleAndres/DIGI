@@ -4,14 +4,18 @@
 import { View, Text, StyleSheet, Pressable, ScrollView, Switch } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { colors, fonts, radius } from '@/theme';
-import { useState } from 'react';
+import { useEventStore } from '@/store/event.store';
 
 export default function EventSettingsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const [moderationOn, setModerationOn] = useState(false);
-  const [downloadOn, setDownloadOn] = useState(true);
-  const [approvalOn, setApprovalOn] = useState(false);
+  const { currentSettings, updateSettings } = useEventStore();
+
+  if (!currentSettings) return null;
+
+  const handleToggle = async (field: string, value: boolean | string) => {
+    await updateSettings(id, { [field]: value });
+  };
 
   return (
     <ScrollView style={s.root} showsVerticalScrollIndicator={false}>
@@ -21,12 +25,33 @@ export default function EventSettingsScreen() {
       </View>
       <View style={s.section}>
         <Text style={s.sectionTitle}>MODERATION</Text>
-        <View style={s.row}><Text style={s.rowLabel}>Auto-moderate photos</Text><Switch value={moderationOn} onValueChange={setModerationOn} trackColor={{true:colors.amber}} /></View>
-        <View style={s.row}><Text style={s.rowLabel}>Require approval</Text><Switch value={approvalOn} onValueChange={setApprovalOn} trackColor={{true:colors.amber}} /></View>
+        <View style={s.row}>
+          <Text style={s.rowLabel}>Auto-moderate photos</Text>
+          <Switch 
+            value={currentSettings.moderation_mode === 'auto'} 
+            onValueChange={(val) => handleToggle('moderation_mode', val ? 'auto' : 'off')} 
+            trackColor={{true:colors.amber}} 
+          />
+        </View>
+        <View style={s.row}>
+          <Text style={s.rowLabel}>Require approval</Text>
+          <Switch 
+            value={currentSettings.require_approval} 
+            onValueChange={(val) => handleToggle('require_approval', val)} 
+            trackColor={{true:colors.amber}} 
+          />
+        </View>
       </View>
       <View style={s.section}>
         <Text style={s.sectionTitle}>ACCESS</Text>
-        <View style={s.row}><Text style={s.rowLabel}>Allow downloads</Text><Switch value={downloadOn} onValueChange={setDownloadOn} trackColor={{true:colors.amber}} /></View>
+        <View style={s.row}>
+          <Text style={s.rowLabel}>Allow downloads</Text>
+          <Switch 
+            value={currentSettings.download_enabled} 
+            onValueChange={(val) => handleToggle('download_enabled', val)} 
+            trackColor={{true:colors.amber}} 
+          />
+        </View>
       </View>
       <View style={s.section}>
         <Text style={s.sectionTitle}>DANGER ZONE</Text>

@@ -17,7 +17,7 @@ export default function CreateEventScreen() {
   const { wizard, updateWizard, setWizardStep, createEvent } = useEventStore();
   const [submitting, setSubmitting] = useState(false);
 
-  const steps = ['Details','Type','Camera','Reveal','Done'];
+  const steps = ['Details','Type','Camera','Reveal','Privacy','Done'];
 
   const handleNext = () => {
     if (wizard.step === 0 && !wizard.title.trim()) {
@@ -29,9 +29,9 @@ export default function CreateEventScreen() {
     }
   };
 
-  const handleCreate = async () => {
+  const handleCreate = async (isDraft: boolean) => {
     setSubmitting(true);
-    const { event, error } = await createEvent();
+    const { event, error } = await createEvent(isDraft);
     setSubmitting(false);
     if (error) {
       Alert.alert('Error', error.message);
@@ -123,8 +123,25 @@ export default function CreateEventScreen() {
         </Animated.View>
       )}
 
-      {/* Step 4: Review */}
+      {/* Step 4: Privacy */}
       {wizard.step === 4 && (
+        <Animated.View entering={FadeInDown} style={s.stepContent}>
+          <Text style={s.heading}>Who can{'\n'}see this?</Text>
+          <View style={s.grid}>
+            {['public', 'private', 'invite_only'].map((v) => (
+              <Pressable key={v} style={[s.optionChip, wizard.visibility===v && s.optionActive]}
+                onPress={() => updateWizard({visibility: v as any})}>
+                <Text style={[s.optionText, wizard.visibility===v && s.optionTextActive]}>
+                  {v.replace('_',' ')}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        </Animated.View>
+      )}
+
+      {/* Step 5: Review */}
+      {wizard.step === 5 && (
         <Animated.View entering={FadeInDown} style={s.stepContent}>
           <Text style={s.heading}>Ready to{'\n'}create?</Text>
           <View style={s.review}>
@@ -133,6 +150,7 @@ export default function CreateEventScreen() {
             <Text style={s.rvLabel}>Camera</Text><Text style={s.rvVal}>{wizard.cameraStyle}</Text>
             <Text style={s.rvLabel}>Shots</Text><Text style={s.rvVal}>{wizard.shotLimit}</Text>
             <Text style={s.rvLabel}>Reveal</Text><Text style={s.rvVal}>{wizard.revealMode}</Text>
+            <Text style={s.rvLabel}>Visibility</Text><Text style={s.rvVal}>{wizard.visibility}</Text>
           </View>
         </Animated.View>
       )}
@@ -146,14 +164,26 @@ export default function CreateEventScreen() {
         )}
         <Pressable
           style={[s.nextBtn, submitting && {opacity:0.6}]}
-          onPress={wizard.step === 4 ? handleCreate : handleNext}
+          onPress={wizard.step === 5 ? () => handleCreate(false) : handleNext}
           disabled={submitting}
         >
           <Text style={s.nextText}>
-            {wizard.step === 4 ? (submitting ? 'Creating...' : 'Create Event') : 'Next'}
+            {wizard.step === 5 ? (submitting ? 'Creating...' : 'Create Event') : 'Next'}
           </Text>
         </Pressable>
       </View>
+
+      {wizard.step === 5 && (
+        <Animated.View entering={FadeInDown.delay(200)}>
+          <Pressable 
+            style={[s.draftBtn, submitting && {opacity:0.6}]} 
+            onPress={() => handleCreate(true)}
+            disabled={submitting}
+          >
+            <Text style={s.draftText}>Save as Draft</Text>
+          </Pressable>
+        </Animated.View>
+      )}
     </ScrollView>
   );
 }
@@ -187,4 +217,6 @@ const s = StyleSheet.create({
   backText:{fontFamily:fonts.headingSemiBold,fontSize:15,color:colors.cream},
   nextBtn:{flex:2,height:52,borderRadius:radius.md,backgroundColor:colors.amber,justifyContent:'center',alignItems:'center'},
   nextText:{fontFamily:fonts.headingSemiBold,fontSize:15,color:colors.void},
+  draftBtn:{height:52,borderRadius:radius.md,backgroundColor:'transparent',justifyContent:'center',alignItems:'center',marginTop:12,borderWidth:1,borderColor:colors.smoke},
+  draftText:{fontFamily:fonts.headingSemiBold,fontSize:15,color:colors.parchment},
 });

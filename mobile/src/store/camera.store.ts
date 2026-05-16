@@ -29,21 +29,21 @@ interface CameraState {
 const MAX_RETRIES = 3;
 const BASE_RETRY_MS = 5000;
 
-const storage: StateStorage = (() => {
+const storage = createJSONStorage(() => {
   try {
     // Lazy require so web/metro doesn't break if module is unavailable.
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const { MMKV } = require('react-native-mmkv');
     const mmkv = new MMKV({ id: 'digi' });
     return {
-      getItem: (name) => mmkv.getString(name) ?? null,
-      setItem: (name, value) => mmkv.set(name, value),
-      removeItem: (name) => mmkv.delete(name),
-    } as StateStorage;
+      getItem: (name: string) => mmkv.getString(name) ?? null,
+      setItem: (name: string, value: string) => mmkv.set(name, value),
+      removeItem: (name: string) => mmkv.delete(name),
+    };
   } catch {
-    return createJSONStorage(() => AsyncStorage);
+    return AsyncStorage;
   }
-})();
+});
 
 export const useCameraStore = create<CameraState>()(
   persist(
@@ -150,7 +150,7 @@ export const useCameraStore = create<CameraState>()(
     {
       name: 'digi.camera.queue',
       storage,
-      partialize: (state) => ({ queue: state.queue }),
+      partialize: (state) => ({ queue: state.queue } as CameraState),
       onRehydrateStorage: () => (state) => {
         state?.setHydrated(true);
       },
