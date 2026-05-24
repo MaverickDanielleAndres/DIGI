@@ -2,7 +2,7 @@
  * Digi — Event Dashboard
  */
 import { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Pressable, ScrollView, Modal } from 'react-native';
+import { View, Text, StyleSheet, Pressable, ScrollView, Modal, Alert } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { supabase } from '@/lib/supabase';
@@ -17,6 +17,8 @@ export default function EventDashboard() {
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [photoCount, setPhotoCount] = useState(0);
   const [showQr, setShowQr] = useState(false);
+  const [duplicating, setDuplicating] = useState(false);
+  const { duplicateEvent } = useEventStore();
 
   useEffect(() => {
     if (!id) return;
@@ -30,6 +32,17 @@ export default function EventDashboard() {
     if (parts) setParticipants(parts as unknown as Participant[]);
     const { count } = await supabase.from('photos').select('*', { count: 'exact', head: true }).eq('event_id', id);
     setPhotoCount(count || 0);
+  };
+
+  const handleDuplicate = async () => {
+    setDuplicating(true);
+    const { event: newEvent, error } = await duplicateEvent(id);
+    setDuplicating(false);
+    if (error) {
+      Alert.alert('Error', error.message);
+    } else if (newEvent) {
+      router.push(`/(owner)/events/${newEvent.id}`);
+    }
   };
 
   if (!event) return <View style={s.root}><Text style={s.loading}>Loading...</Text></View>;
@@ -88,6 +101,16 @@ export default function EventDashboard() {
         <Pressable style={s.actionBtn} onPress={() => router.push(`/(owner)/events/${id}/projector`)}>
           <Text style={s.actionEmoji}>📺</Text>
           <Text style={s.actionText}>Projector</Text>
+        </Pressable>
+      </View>
+      <View style={[s.actions, { marginBottom: 32 }]}>
+        <Pressable style={s.actionBtn} onPress={() => router.push(`/(owner)/events/${id}/edit`)}>
+          <Text style={s.actionEmoji}>📝</Text>
+          <Text style={s.actionText}>Edit Details</Text>
+        </Pressable>
+        <Pressable style={[s.actionBtn, duplicating && {opacity: 0.6}]} onPress={handleDuplicate} disabled={duplicating}>
+          <Text style={s.actionEmoji}>📋</Text>
+          <Text style={s.actionText}>{duplicating ? 'Copying...' : 'Duplicate'}</Text>
         </Pressable>
         <View style={s.actionBtn} pointerEvents="none" />
       </View>

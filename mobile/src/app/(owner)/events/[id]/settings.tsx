@@ -1,7 +1,7 @@
 /**
  * Digi — Event Settings
  */
-import { View, Text, StyleSheet, Pressable, ScrollView, Switch } from 'react-native';
+import { View, Text, StyleSheet, Pressable, ScrollView, Switch, Alert } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { colors, fonts, radius } from '@/theme';
 import { useEventStore } from '@/store/event.store';
@@ -9,9 +9,29 @@ import { useEventStore } from '@/store/event.store';
 export default function EventSettingsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { currentSettings, updateSettings } = useEventStore();
+  const { currentSettings, updateSettings, endEvent, deleteEvent } = useEventStore();
 
   if (!currentSettings) return null;
+
+  const handleDelete = () => {
+    Alert.alert('Delete Event', 'Are you sure you want to permanently delete this event and all its photos?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: async () => {
+          await deleteEvent(id);
+          router.replace('/(owner)/home');
+      }}
+    ]);
+  };
+
+  const handleEnd = () => {
+    Alert.alert('End Event', 'Are you sure you want to end this event?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'End Event', style: 'destructive', onPress: async () => {
+          await endEvent(id);
+          router.replace('/(owner)/home');
+      }}
+    ]);
+  };
 
   const handleToggle = async (field: string, value: boolean | string) => {
     await updateSettings(id, { [field]: value });
@@ -55,8 +75,8 @@ export default function EventSettingsScreen() {
       </View>
       <View style={s.section}>
         <Text style={s.sectionTitle}>DANGER ZONE</Text>
-        <Pressable style={s.dangerBtn}><Text style={s.dangerText}>End Event</Text></Pressable>
-        <Pressable style={[s.dangerBtn,{marginTop:8}]}><Text style={s.dangerText}>Delete Event</Text></Pressable>
+        <Pressable style={s.dangerBtn} onPress={handleEnd}><Text style={s.dangerText}>End Event</Text></Pressable>
+        <Pressable style={[s.dangerBtn,{marginTop:8}]} onPress={handleDelete}><Text style={s.dangerText}>Delete Event</Text></Pressable>
       </View>
       <View style={{height:100}} />
     </ScrollView>

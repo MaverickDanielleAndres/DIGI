@@ -50,6 +50,8 @@ interface EventState {
   updateEvent: (id: string, updates: Partial<Event>) => Promise<{ error: Error | null }>;
   updateSettings: (id: string, updates: Partial<EventSettings>) => Promise<{ error: Error | null }>;
   endEvent: (id: string) => Promise<{ error: Error | null }>;
+  deleteEvent: (id: string) => Promise<{ error: Error | null }>;
+  duplicateEvent: (id: string) => Promise<{ event: Event | null; error: Error | null }>;
 }
 
 const defaultWizard: EventCreationWizard = {
@@ -204,5 +206,77 @@ export const useEventStore = create<EventState>((set, get) => ({
 
   endEvent: async (id) => {
     return get().updateEvent(id, { status: 'ended' } as any);
+  },
+
+  deleteEvent: async (id) => {
+    try {
+      const { error } = await supabase.from('events').delete().eq('id', id);
+      if (error) return { error };
+      set((s) => ({
+        events: s.events.filter((e) => e.id !== id),
+        currentEvent: s.currentEvent?.id === id ? null : s.currentEvent,
+      }));
+      return { error: null };
+    } catch (error) {
+      return { error: error as Error };
+    }
+  },
+
+  duplicateEvent: async (id) => {
+    try {
+      // 1. Fetch original event & settings
+      const { data: origEvent, error: evErr } = await supabase.from('events').select('*').eq('id', id).single();
+      const { data: origSettings, error: setErr } = await supabase.from('event_settings').select('*').eq('event_id', id).single();
+      if (evErr || !origEvent) throw evErr;
+      if (setErr || !origSettings) throw setErr;
+
+      // 2. Insert new event
+      const { data: newEvent, error: newEvErr } = await supabase.from('events').insert({
+        owner_id: origEvent.owner_id,
+        title: origEvent.title + ' (Copy)',
+        description: origEvent.description,
+        event_type: origEvent.event_type,
+        visibility: origEvent.visibility,
+        status: 'draft', // always duplicate as draft
+      } as any).select().single();
+      
+      if (newEvErr || !newEvent) throw newEvErr;
+
+      // 3. Insert new settings
+      await supabase.from('event_settings').insert({
+        event_id: newEvent.id,
+        shot_limit_per_participant: origSettings.shot_limit_per_participant,
+        camera_style: origSettings.camera_style,
+        reveal_mode: origSettings.reveal_mode,
+        max_participants: origSettings.max_participants,
+      } as any);
+
+      // 4. Default album & qr code
+      await supabase.from('albums').insert({
+        event_id: newEvent.id,
+        name: 'Shared Album',
+        type: 'shared',
+        layout: 'timeline',
+        created_by: origEvent.owner_id,
+      } as any);
+      
+      await supabase.from('participants').insert({
+        event_id: newEvent.id,
+        user_id: origEvent.owner_id,
+        role: 'owner',
+      } as any);
+
+      await supabase.from('qr_codes').insert({
+        event_id: newEvent.id,
+        type: 'dynamic',
+        code_data: `digi://join/${newEvent.id}`,
+      } as any);
+
+      const typedEvent = newEvent as unknown as Event;
+      set((s) => ({ events: [typedEvent, ...s.events] }));
+      return { event: typedEvent, error: null };
+    } catch (error) {
+      return { event: null, error: error as Error };
+    }
   },
 }));

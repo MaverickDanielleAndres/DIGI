@@ -55,7 +55,21 @@
           "cameraPermission": "Allow Digi to access your camera to capture event memories."
         }
       ],
-      "expo-notifications"
+      "expo-notifications",
+      [
+        "@bacons/apple-targets",
+        {
+          "appleTeamId": "PLACEHOLDER_TEAM_ID",
+          "match-settings": true,
+          "appClip": {
+            "name": "Digi Guest",
+            "bundleIdentifier": "com.digi.app.Clip",
+            "entitlements": {
+              "com.apple.developer.associated-domains": ["applinks:digi.app", "appclips:digi.app"]
+            }
+          }
+        }
+      ]
     ],
     "extra": {
       "router": {

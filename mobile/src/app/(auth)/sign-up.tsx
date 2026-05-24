@@ -32,7 +32,12 @@ export default function SignUpScreen() {
     }
 
     setIsSubmitting(true);
-    const { error } = await signUpWithEmail(email.trim(), password, name.trim());
+    const { error } = await signUpWithEmail(
+      email.trim(), 
+      password, 
+      name.trim(), 
+      (accountType as 'personal' | 'business') || 'personal'
+    );
     setIsSubmitting(false);
 
     if (error) {
@@ -57,12 +62,12 @@ export default function SignUpScreen() {
 
         <View style={styles.form}>
           <Animated.View entering={FadeInDown.delay(300)}>
-            <Text style={styles.label}>DISPLAY NAME</Text>
+            <Text style={styles.label}>{accountType === 'business' ? 'BRAND NAME' : 'DISPLAY NAME'}</Text>
             <TextInput
               style={styles.input}
               value={name}
               onChangeText={setName}
-              placeholder="Your name"
+              placeholder={accountType === 'business' ? 'Your brand/agency name' : 'Your name'}
               placeholderTextColor={colors.ash}
               autoCapitalize="words"
             />

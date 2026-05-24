@@ -51,7 +51,7 @@ export function useNotifications() {
   };
 }
 
-async function registerForPushNotificationsAsync() {
+export async function registerForPushNotificationsAsync() {
   let token;
 
   if (Platform.OS === 'android') {

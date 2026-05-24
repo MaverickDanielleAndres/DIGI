@@ -21,7 +21,7 @@ interface AuthState {
   setLoading: (loading: boolean) => void;
   setOnboarded: (onboarded: boolean) => void;
   signInWithEmail: (email: string, password: string) => Promise<{ error: Error | null }>;
-  signUpWithEmail: (email: string, password: string, displayName: string) => Promise<{ error: Error | null }>;
+  signUpWithEmail: (email: string, password: string, displayName: string, accountType?: 'personal' | 'business') => Promise<{ error: Error | null }>;
   signInWithOtp: (email: string) => Promise<{ error: Error | null }>;
   verifyOtp: (email: string, token: string) => Promise<{ error: Error | null }>;
   signInWithApple: (identityToken: string) => Promise<{ error: Error | null }>;
@@ -54,7 +54,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
-  signUpWithEmail: async (email, password, displayName) => {
+  signUpWithEmail: async (email, password, displayName, accountType = 'personal') => {
     try {
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -69,7 +69,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           id: data.user.id,
           email,
           display_name: displayName,
-          account_type: 'personal',
+          account_type: accountType,
           plan: 'free',
         } as any);
       }

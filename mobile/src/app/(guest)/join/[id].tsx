@@ -8,6 +8,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth.store';
 import { useEventStore } from '@/store/event.store';
+import { registerForPushNotificationsAsync } from '@/lib/useNotifications';
 import { colors, fonts, radius } from '@/theme';
 import type { Event } from '@/types';
 
@@ -48,11 +49,6 @@ export default function GuestJoinScreen() {
   };
 
   const handleJoin = async () => {
-    if (!nickname.trim()) {
-      Alert.alert('Required', 'Please enter a nickname so the host knows who you are!');
-      return;
-    }
-
     setIsJoining(true);
     
     // Ensure we have an auth session (anonymous or registered)
@@ -80,7 +76,7 @@ export default function GuestJoinScreen() {
       const { error } = await supabase.from('participants').insert({
         event_id: id,
         user_id: userId,
-        guest_nickname: nickname.trim(),
+        guest_nickname: nickname.trim() || 'Guest',
         role: 'participant'
       } as any);
 
@@ -89,8 +85,30 @@ export default function GuestJoinScreen() {
         throw error;
       }
 
-      // Redirect to guest camera view
-      router.replace(`/(guest)/camera?eventId=${id}`);
+      // Ask for push notification opt-in
+      Alert.alert(
+        'Don\'t miss the reveal! 📸',
+        'Want to get notified when the photos unlock?',
+        [
+          {
+            text: 'Skip',
+            style: 'cancel',
+            onPress: () => router.replace(`/(guest)/camera?eventId=${id}`)
+          },
+          {
+            text: 'Yes, notify me',
+            onPress: async () => {
+              const token = await registerForPushNotificationsAsync();
+              if (token) {
+                // optionally save push token to supabase user profile
+                await supabase.from('users').update({ push_token: token }).eq('id', userId);
+              }
+              router.replace(`/(guest)/camera?eventId=${id}`);
+            }
+          }
+        ]
+      );
+
     } catch (e: any) {
       Alert.alert('Error joining', e.message);
     } finally {

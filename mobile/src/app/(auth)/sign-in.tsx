@@ -8,8 +8,14 @@ import {
 } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
+import * as AppleAuthentication from 'expo-apple-authentication';
+import * as WebBrowser from 'expo-web-browser';
+import * as Linking from 'expo-linking';
+import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth.store';
 import { colors, fonts, radius } from '@/theme';
+
+WebBrowser.maybeCompleteAuthSession();
 
 export default function SignInScreen() {
   const router = useRouter();
@@ -53,9 +59,46 @@ export default function SignInScreen() {
     }
   };
 
-  const handleSocialSignIn = async (provider: 'apple' | 'google') => {
-    Alert.alert('Coming Soon', `${provider} sign-in will be available soon.`);
-    // TODO: Implement actual tokens from expo-auth-session or expo-apple-authentication
+  const handleAppleSignIn = async () => {
+    try {
+      const credential = await AppleAuthentication.signInAsync({
+        requestedScopes: [
+          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+          AppleAuthentication.AppleAuthenticationScope.EMAIL,
+        ],
+      });
+      if (credential.identityToken) {
+        const { error } = await signInWithApple(credential.identityToken);
+        if (error) throw error;
+        router.replace('/(owner)/home');
+      }
+    } catch (e: any) {
+      if (e.code !== 'ERR_REQUEST_CANCELED') {
+        Alert.alert('Apple Sign-In failed', e.message);
+      }
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    try {
+      const redirectUrl = Linking.createURL('/');
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: redirectUrl },
+      });
+      
+      if (error) throw error;
+      
+      if (data?.url) {
+        const result = await WebBrowser.openAuthSessionAsync(data.url, redirectUrl);
+        if (result.type === 'success') {
+          // Supabase auto-handles the session from deep link in its own listener
+          router.replace('/(owner)/home');
+        }
+      }
+    } catch (e: any) {
+      Alert.alert('Google Sign-In failed', e.message);
+    }
   };
 
   return (
@@ -127,10 +170,10 @@ export default function SignInScreen() {
             <View style={styles.line} />
           </View>
 
-          <Pressable style={styles.socialBtn} onPress={() => handleSocialSignIn('apple')}>
+          <Pressable style={styles.socialBtn} onPress={handleAppleSignIn}>
             <Text style={styles.socialText}>Continue with Apple</Text>
           </Pressable>
-          <Pressable style={styles.socialBtn} onPress={() => handleSocialSignIn('google')}>
+          <Pressable style={styles.socialBtn} onPress={handleGoogleSignIn}>
             <Text style={styles.socialText}>Continue with Google</Text>
           </Pressable>
         </Animated.View>
