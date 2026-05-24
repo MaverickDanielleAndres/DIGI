@@ -1,14 +1,16 @@
+import Link from 'next/link';
+
 export default function Home() {
   return (
     <>
       {/* Navigation */}
       <nav className="nav">
-        <a href="/" className="nav-brand">Digi</a>
+        <Link href="/" className="nav-brand">Digi</Link>
         <div className="nav-links">
           <a href="#features">Features</a>
           <a href="#how-it-works">How It Works</a>
           <a href="#pricing">Pricing</a>
-          <a href="#download" className="nav-cta">Download</a>
+          <a href="/signup" className="nav-cta">Sign Up</a>
         </div>
       </nav>
 
@@ -23,7 +25,7 @@ export default function Home() {
           One event. One disposable camera. Everyone contributes to the same shared album — 
           no filters, no retakes, just real memories.
         </p>
-        <a href="#download" className="hero-cta">
+        <a href="/signup" className="hero-cta">
           📸 Get Digi Free
         </a>
       </section>
@@ -147,7 +149,7 @@ export default function Home() {
               <li>Basic album layouts</li>
               <li>7-day photo storage</li>
             </ul>
-            <a href="#download" className="pricing-cta secondary">Get Started</a>
+            <a href="/signup" className="pricing-cta secondary">Get Started</a>
           </div>
           <div className="pricing-card featured">
             <div className="pricing-badge">Most Popular</div>
@@ -164,7 +166,7 @@ export default function Home() {
               <li>Memory notes & voice</li>
               <li>Unlimited storage</li>
             </ul>
-            <a href="#download" className="pricing-cta primary">Start Free Trial</a>
+            <a href="/signup" className="pricing-cta primary">Start Free Trial</a>
           </div>
           <div className="pricing-card">
             <div className="pricing-plan">Business</div>
@@ -180,7 +182,7 @@ export default function Home() {
               <li>Priority support</li>
               <li>White-label option</li>
             </ul>
-            <a href="#download" className="pricing-cta secondary">Contact Sales</a>
+            <a href="/signup" className="pricing-cta secondary">Contact Sales</a>
           </div>
         </div>
       </section>
@@ -195,8 +197,8 @@ export default function Home() {
         <p className="hero-sub">
           Join thousands of hosts who trust Digi to capture their most important moments.
         </p>
-        <a href="#download" className="hero-cta" id="download">
-          📸 Download Digi
+        <a href="/signup" className="hero-cta" id="download">
+          📸 Sign Up Now
         </a>
       </section>
 
