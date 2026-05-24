@@ -1,4 +1,20 @@
+"use client";
+
 import Link from 'next/link';
+import { motion } from 'framer-motion';
+
+const fadeUp = {
+  hidden: { opacity: 0, y: 30 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut" } }
+};
+
+const staggerContainer = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.15 }
+  }
+};
 
 export default function Home() {
   return (
@@ -15,118 +31,141 @@ export default function Home() {
       </nav>
 
       {/* Hero */}
-      <section className="hero">
-        <p className="hero-tag">Collective Memory Platform</p>
-        <h1 className="hero-title">
+      <motion.section 
+        className="hero"
+        initial="hidden"
+        animate="visible"
+        variants={staggerContainer}
+      >
+        <motion.p variants={fadeUp} className="hero-tag">Collective Memory Platform</motion.p>
+        <motion.h1 variants={fadeUp} className="hero-title">
           Every Moment,<br />
           <span>Together</span>
-        </h1>
-        <p className="hero-sub">
+        </motion.h1>
+        <motion.p variants={fadeUp} className="hero-sub">
           One event. One disposable camera. Everyone contributes to the same shared album — 
           no filters, no retakes, just real memories.
-        </p>
-        <a href="/signup" className="hero-cta">
+        </motion.p>
+        <motion.a 
+          variants={fadeUp}
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          href="/signup" 
+          className="hero-cta"
+        >
           📸 Get Digi Free
-        </a>
-      </section>
+        </motion.a>
+      </motion.section>
 
       {/* Features */}
       <section className="section" id="features">
-        <p className="section-tag">Why Digi?</p>
-        <h2 className="section-title">Not just another photo app</h2>
-        <p className="section-desc">
+        <motion.p initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-100px" }} variants={fadeUp} className="section-tag">Why Digi?</motion.p>
+        <motion.h2 initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-100px" }} variants={fadeUp} className="section-title">Not just another photo app</motion.h2>
+        <motion.p initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-100px" }} variants={fadeUp} className="section-desc">
           Digi recreates the magic of disposable cameras for the digital age — 
           with collaborative albums, delayed reveals, and cinematic memories.
-        </p>
-        <div className="features-grid">
-          <div className="feature-card">
+        </motion.p>
+        <motion.div 
+          className="features-grid"
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: "-100px" }}
+          variants={staggerContainer}
+        >
+          <motion.div variants={fadeUp} className="feature-card">
             <div className="feature-icon">📷</div>
             <h3 className="feature-name">Disposable Camera</h3>
             <p className="feature-text">
               10 unique camera styles from vintage disposable to Y2K digicam. 
               Each guest gets limited shots — making every capture intentional.
             </p>
-          </div>
-          <div className="feature-card">
+          </motion.div>
+          <motion.div variants={fadeUp} className="feature-card">
             <div className="feature-icon">🔒</div>
             <h3 className="feature-name">Delayed Reveal</h3>
             <p className="feature-text">
               Photos stay locked until the event ends. Then, like developing film, 
               all memories reveal at once in a cinematic experience.
             </p>
-          </div>
-          <div className="feature-card">
+          </motion.div>
+          <motion.div variants={fadeUp} className="feature-card">
             <div className="feature-icon">👥</div>
             <h3 className="feature-name">Shared Album</h3>
             <p className="feature-text">
               Everyone contributes to one beautiful album. 8 layouts from filmstrip 
               to polaroid wall — your memories, your style.
             </p>
-          </div>
-          <div className="feature-card">
+          </motion.div>
+          <motion.div variants={fadeUp} className="feature-card">
             <div className="feature-icon">📱</div>
             <h3 className="feature-name">QR Join</h3>
             <p className="feature-text">
               Guests scan a QR code and start capturing instantly — no app download required. 
               Works as a web app for quick access.
             </p>
-          </div>
-          <div className="feature-card">
+          </motion.div>
+          <motion.div variants={fadeUp} className="feature-card">
             <div className="feature-icon">✍️</div>
             <h3 className="feature-name">Memory Notes</h3>
             <p className="feature-text">
               Attach handwritten-style notes, voice messages, and dedications 
               to any photo. Future-unlock notes for anniversary surprises.
             </p>
-          </div>
-          <div className="feature-card">
+          </motion.div>
+          <motion.div variants={fadeUp} className="feature-card">
             <div className="feature-icon">🤖</div>
             <h3 className="feature-name">AI Magic</h3>
             <p className="feature-text">
               AI-generated captions, best-shot detection, duplicate removal, 
               and one-tap recap videos of your entire event.
             </p>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       </section>
 
       {/* How It Works */}
       <section className="section" id="how-it-works">
-        <p className="section-tag">How It Works</p>
-        <h2 className="section-title">Three steps to magic</h2>
-        <p className="section-desc">
+        <motion.p initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-100px" }} variants={fadeUp} className="section-tag">How It Works</motion.p>
+        <motion.h2 initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-100px" }} variants={fadeUp} className="section-title">Three steps to magic</motion.h2>
+        <motion.p initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-100px" }} variants={fadeUp} className="section-desc">
           From creation to reveal — Digi makes the entire experience effortless.
-        </p>
-        <div className="steps">
-          <div className="step">
+        </motion.p>
+        <motion.div 
+          className="steps"
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: "-100px" }}
+          variants={staggerContainer}
+        >
+          <motion.div variants={fadeUp} className="step">
             <h3 className="step-title">Create Your Event</h3>
             <p className="step-desc">
               Name your event, pick a camera style, set your shot limit, and choose 
               when photos reveal. Takes less than 30 seconds.
             </p>
-          </div>
-          <div className="step">
+          </motion.div>
+          <motion.div variants={fadeUp} className="step">
             <h3 className="step-title">Share the QR Code</h3>
             <p className="step-desc">
               Display your custom QR code at the event. Guests scan and 
               start shooting instantly — no sign-up required.
             </p>
-          </div>
-          <div className="step">
+          </motion.div>
+          <motion.div variants={fadeUp} className="step">
             <h3 className="step-title">Enjoy the Reveal</h3>
             <p className="step-desc">
               When the event ends, all photos develop at once. Watch 
               memories unfold together — from sepia to full color.
             </p>
-          </div>
-          <div className="step">
+          </motion.div>
+          <motion.div variants={fadeUp} className="step">
             <h3 className="step-title">Keep Forever</h3>
             <p className="step-desc">
               Download your album, order a physical photobook, or share 
               an AI-generated recap video with everyone.
             </p>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       </section>
 
       {/* Pricing */}
