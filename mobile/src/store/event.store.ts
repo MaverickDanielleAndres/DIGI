@@ -231,45 +231,48 @@ export const useEventStore = create<EventState>((set, get) => ({
       if (setErr || !origSettings) throw setErr;
 
       // 2. Insert new event
+      const typedOrigEvent = origEvent as any;
+      const typedOrigSettings = origSettings as any;
       const { data: newEvent, error: newEvErr } = await supabase.from('events').insert({
-        owner_id: origEvent.owner_id,
-        title: origEvent.title + ' (Copy)',
-        description: origEvent.description,
-        event_type: origEvent.event_type,
-        visibility: origEvent.visibility,
+        owner_id: typedOrigEvent.owner_id,
+        title: typedOrigEvent.title + ' (Copy)',
+        description: typedOrigEvent.description,
+        event_type: typedOrigEvent.event_type,
+        visibility: typedOrigEvent.visibility,
         status: 'draft', // always duplicate as draft
       } as any).select().single();
       
       if (newEvErr || !newEvent) throw newEvErr;
+      const typedNewEvent = newEvent as any;
 
       // 3. Insert new settings
       await supabase.from('event_settings').insert({
-        event_id: newEvent.id,
-        shot_limit_per_participant: origSettings.shot_limit_per_participant,
-        camera_style: origSettings.camera_style,
-        reveal_mode: origSettings.reveal_mode,
-        max_participants: origSettings.max_participants,
+        event_id: typedNewEvent.id,
+        shot_limit_per_participant: typedOrigSettings.shot_limit_per_participant,
+        camera_style: typedOrigSettings.camera_style,
+        reveal_mode: typedOrigSettings.reveal_mode,
+        max_participants: typedOrigSettings.max_participants,
       } as any);
 
       // 4. Default album & qr code
       await supabase.from('albums').insert({
-        event_id: newEvent.id,
+        event_id: typedNewEvent.id,
         name: 'Shared Album',
         type: 'shared',
         layout: 'timeline',
-        created_by: origEvent.owner_id,
+        created_by: typedOrigEvent.owner_id,
       } as any);
       
       await supabase.from('participants').insert({
-        event_id: newEvent.id,
-        user_id: origEvent.owner_id,
+        event_id: typedNewEvent.id,
+        user_id: typedOrigEvent.owner_id,
         role: 'owner',
       } as any);
 
       await supabase.from('qr_codes').insert({
-        event_id: newEvent.id,
+        event_id: typedNewEvent.id,
         type: 'dynamic',
-        code_data: `digi://join/${newEvent.id}`,
+        code_data: `digi://join/${typedNewEvent.id}`,
       } as any);
 
       const typedEvent = newEvent as unknown as Event;

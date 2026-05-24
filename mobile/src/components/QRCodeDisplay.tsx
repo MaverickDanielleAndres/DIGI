@@ -1,33 +1,42 @@
-import React from 'react';
+import React, { forwardRef } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
-import { colors, fonts, radius } from '@/theme';
+import { colors as themeColors, fonts, radius } from '@/theme';
 
 interface QRCodeDisplayProps {
   value: string;
   size?: number;
   logo?: any;
+  fgColor?: string;
+  bgColor?: string;
 }
 
-export function QRCodeDisplay({ value, size = 200, logo }: QRCodeDisplayProps) {
+export const QRCodeDisplay = forwardRef<any, QRCodeDisplayProps>(({ 
+  value, 
+  size = 200, 
+  logo,
+  fgColor = themeColors.void,
+  bgColor = themeColors.cream
+}, ref) => {
   return (
     <View style={styles.container}>
-      <View style={styles.qrWrapper}>
+      <View style={[styles.qrWrapper, { backgroundColor: bgColor }]}>
         <QRCode
+          getRef={(c) => { if (typeof ref === 'function') ref(c); else if (ref) ref.current = c; }}
           value={value}
           size={size}
-          color={colors.void}
-          backgroundColor={colors.cream}
+          color={fgColor}
+          backgroundColor={bgColor}
           logo={logo}
           logoSize={size * 0.25}
-          logoBackgroundColor={colors.cream}
+          logoBackgroundColor={bgColor}
           logoBorderRadius={radius.sm}
         />
       </View>
       <Text style={styles.instruction}>Scan to join the event</Text>
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   container: {
@@ -36,9 +45,8 @@ const styles = StyleSheet.create({
   },
   qrWrapper: {
     padding: 16,
-    backgroundColor: colors.cream,
     borderRadius: radius.lg,
-    shadowColor: colors.void,
+    shadowColor: themeColors.void,
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.5,
     shadowRadius: 20,
@@ -48,7 +56,7 @@ const styles = StyleSheet.create({
     marginTop: 16,
     fontFamily: fonts.bodySemiBold,
     fontSize: 14,
-    color: colors.parchment,
+    color: themeColors.parchment,
     letterSpacing: 1,
     textTransform: 'uppercase',
   },

@@ -36,6 +36,8 @@ export function CameraViewfinder({
   const [shotsUsed, setShotsUsed] = useState(initialShotsUsed);
   const [cooldownLeft, setCooldownLeft] = useState(0);
   const [cooldownUntil, setCooldownUntil] = useState<number | null>(null);
+  const [timerMode, setTimerMode] = useState<'off' | '3s' | '10s'>('off');
+  const [timerCountdown, setTimerCountdown] = useState<number | null>(null);
   
   const cameraRef = useRef<CameraView>(null);
   const addPhotoToQueue = useCameraStore((s) => s.addPhotoToQueue);
@@ -85,20 +87,9 @@ export function CameraViewfinder({
     );
   }
 
-  const handleCapture = async () => {
-    if (shotsUsed >= shotLimit) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      return;
-    }
-
-    if (cooldownLeft > 0) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-      return;
-    }
-
+  const executeCapture = async () => {
     if (!cameraRef.current) return;
 
-    // Trigger UI effects immediately for responsiveness
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     
     shutterScale.value = withSequence(
@@ -118,31 +109,59 @@ export function CameraViewfinder({
       withSpring(1, springs.standard)
     );
 
-    // Update local state instantly
     setShotsUsed((prev) => prev + 1);
     if (cooldownSeconds > 0) {
       setCooldownUntil(Date.now() + cooldownSeconds * 1000);
     }
 
     try {
-      // Actually take the picture
       const photo = await cameraRef.current.takePictureAsync({
         quality: 0.8,
-        skipProcessing: true, // Faster capture
+        skipProcessing: true,
       });
 
       if (photo?.uri) {
         const id = uuidv4();
-        // Add to local upload queue
         addPhotoToQueue(id, photo.uri);
-        // Trigger immediate background sync
         processQueue(eventId, participantId, cameraStyle);
       }
     } catch (e) {
       console.error('Capture failed', e);
-      // Revert if it completely failed
       setShotsUsed((prev) => prev - 1);
     }
+  };
+
+  const handleCapture = async () => {
+    if (shotsUsed >= shotLimit) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      return;
+    }
+
+    if (cooldownLeft > 0 || timerCountdown !== null) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      return;
+    }
+
+    if (timerMode !== 'off') {
+      let timeLeft = timerMode === '3s' ? 3 : 10;
+      setTimerCountdown(timeLeft);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      
+      const interval = setInterval(() => {
+        timeLeft -= 1;
+        if (timeLeft > 0) {
+          setTimerCountdown(timeLeft);
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        } else {
+          clearInterval(interval);
+          setTimerCountdown(null);
+          executeCapture();
+        }
+      }, 1000);
+      return;
+    }
+
+    await executeCapture();
   };
 
   const toggleFacing = () => {
@@ -155,6 +174,11 @@ export function CameraViewfinder({
     if (!allowFlash) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setFlash(f => f === 'off' ? 'on' : f === 'on' ? 'auto' : 'off');
+  };
+
+  const toggleTimer = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setTimerMode(t => t === 'off' ? '3s' : t === '3s' ? '10s' : 'off');
   };
 
   const shutterStyle = useAnimatedStyle(() => ({ transform: [{ scale: shutterScale.value }] }));
@@ -187,6 +211,11 @@ export function CameraViewfinder({
         <View style={s.styleBadge}>
           <Text style={s.styleText}>{cameraStyle.replace('_', ' ').toUpperCase()}</Text>
         </View>
+        
+        <Pressable style={s.timerBtn} onPress={toggleTimer}>
+          <Text style={s.timerBtnText}>{timerMode === 'off' ? '⏱️' : timerMode}</Text>
+        </Pressable>
+
         <View style={s.counterStack}>
           {cooldownLeft > 0 && (
             <View style={s.cooldownBadge}>
@@ -203,6 +232,12 @@ export function CameraViewfinder({
       </View>
 
       {/* Controls */}
+      {timerCountdown !== null && (
+        <View style={s.bigTimer}>
+          <Text style={s.bigTimerText}>{timerCountdown}</Text>
+        </View>
+      )}
+
       <View style={s.controls}>
         <View style={s.controlsSide}>
           {allowFlash ? (
@@ -261,6 +296,8 @@ const s = StyleSheet.create({
   topBar: { position: 'absolute', top: 60, left: 24, right: 24, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', zIndex: 15 },
   styleBadge: { backgroundColor: colors.void + 'CC', paddingHorizontal: 12, paddingVertical: 6, borderRadius: radius.pill },
   styleText: { fontFamily: fonts.bodySemiBold, fontSize: 10, letterSpacing: 2, color: colors.amber },
+  timerBtn: { backgroundColor: colors.void + 'CC', width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
+  timerBtnText: { fontFamily: fonts.bodySemiBold, fontSize: 14, color: colors.cream },
   counterStack: { alignItems: 'flex-end', gap: 6 },
   cooldownBadge: { backgroundColor: colors.void + 'CC', paddingHorizontal: 10, paddingVertical: 6, borderRadius: radius.pill, borderWidth: 1, borderColor: colors.amber + '50' },
   cooldownText: { fontFamily: fonts.bodySemiBold, fontSize: 10, letterSpacing: 1, color: colors.amber },
@@ -280,5 +317,8 @@ const s = StyleSheet.create({
   shutterInner: { width: 68, height: 68, borderRadius: 34, backgroundColor: colors.cream },
   shutterInnerDisabled: { backgroundColor: colors.ash },
   
+  bigTimer: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, justifyContent: 'center', alignItems: 'center', zIndex: 30 },
+  bigTimerText: { fontFamily: fonts.heading, fontSize: 120, color: colors.cream, textShadowColor: colors.void, textShadowOffset: { width: 0, height: 4 }, textShadowRadius: 10 },
+
   grain: { ...StyleSheet.absoluteFillObject, backgroundColor: colors.filmGrain, zIndex: 5, pointerEvents: 'none' },
 });

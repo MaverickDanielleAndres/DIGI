@@ -2,8 +2,9 @@
  * Digi — Edit Event Details
  */
 import { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Pressable, TextInput, ScrollView, Alert } from 'react-native';
+import { View, Text, StyleSheet, Pressable, TextInput, ScrollView, Alert, Platform } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEventStore } from '@/store/event.store';
 import { colors, fonts, radius } from '@/theme';
@@ -16,6 +17,10 @@ export default function EditEventScreen() {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [location, setLocation] = useState('');
+  const [startsAt, setStartsAt] = useState<string | null>(null);
+  const [endsAt, setEndsAt] = useState<string | null>(null);
+  const [showStartPicker, setShowStartPicker] = useState(false);
+  const [showEndPicker, setShowEndPicker] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -23,6 +28,8 @@ export default function EditEventScreen() {
       setTitle(currentEvent.title || '');
       setDescription(currentEvent.description || '');
       setLocation(currentEvent.location || '');
+      setStartsAt(currentEvent.starts_at || null);
+      setEndsAt(currentEvent.ends_at || null);
     }
   }, [currentEvent]);
 
@@ -39,6 +46,8 @@ export default function EditEventScreen() {
       title: title.trim(),
       description: description.trim() || null,
       location: location.trim() || null,
+      starts_at: startsAt,
+      ends_at: endsAt,
     } as any);
     setSubmitting(false);
 
@@ -84,6 +93,42 @@ export default function EditEventScreen() {
           placeholder="Location (optional)" 
           placeholderTextColor={colors.ash} 
         />
+
+        <Text style={s.label}>START TIME (OPTIONAL)</Text>
+        <Pressable style={s.input} onPress={() => setShowStartPicker(true)}>
+          <Text style={{color: startsAt ? colors.cream : colors.ash}}>
+            {startsAt ? new Date(startsAt).toLocaleString() : 'Select Start Date & Time'}
+          </Text>
+        </Pressable>
+        {showStartPicker && (
+          <DateTimePicker
+            value={startsAt ? new Date(startsAt) : new Date()}
+            mode="datetime"
+            display="default"
+            onChange={(event, date) => {
+              setShowStartPicker(Platform.OS === 'ios');
+              if (date) setStartsAt(date.toISOString());
+            }}
+          />
+        )}
+
+        <Text style={s.label}>END TIME (OPTIONAL)</Text>
+        <Pressable style={s.input} onPress={() => setShowEndPicker(true)}>
+          <Text style={{color: endsAt ? colors.cream : colors.ash}}>
+            {endsAt ? new Date(endsAt).toLocaleString() : 'Select End Date & Time'}
+          </Text>
+        </Pressable>
+        {showEndPicker && (
+          <DateTimePicker
+            value={endsAt ? new Date(endsAt) : new Date()}
+            mode="datetime"
+            display="default"
+            onChange={(event, date) => {
+              setShowEndPicker(Platform.OS === 'ios');
+              if (date) setEndsAt(date.toISOString());
+            }}
+          />
+        )}
       </Animated.View>
 
       <Pressable

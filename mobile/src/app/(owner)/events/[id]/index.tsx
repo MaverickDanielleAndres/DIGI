@@ -1,13 +1,14 @@
 /**
  * Digi — Event Dashboard
  */
-import { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Pressable, ScrollView, Modal, Alert } from 'react-native';
+import { useEffect, useState, useRef } from 'react';
+import { View, Text, StyleSheet, Pressable, ScrollView, Modal, Alert, Share } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 import { QRCodeDisplay } from '@/components/QRCodeDisplay';
 import { colors, fonts, radius } from '@/theme';
+import { useEventStore } from '@/store/event.store';
 import type { Event, Participant } from '@/types';
 
 export default function EventDashboard() {
@@ -18,6 +19,10 @@ export default function EventDashboard() {
   const [photoCount, setPhotoCount] = useState(0);
   const [showQr, setShowQr] = useState(false);
   const [duplicating, setDuplicating] = useState(false);
+  const [countdown, setCountdown] = useState<string | null>(null);
+  const [qrColor, setQrColor] = useState<string>(colors.void);
+  const [qrBgColor, setQrBgColor] = useState<string>(colors.cream);
+  const qrRef = useRef<any>(null);
   const { duplicateEvent } = useEventStore();
 
   useEffect(() => {
@@ -32,6 +37,15 @@ export default function EventDashboard() {
     if (parts) setParticipants(parts as unknown as Participant[]);
     const { count } = await supabase.from('photos').select('*', { count: 'exact', head: true }).eq('event_id', id);
     setPhotoCount(count || 0);
+
+    const evData = ev as any;
+    if (evData?.starts_at) {
+      const target = new Date(evData.starts_at).getTime();
+      const now = new Date().getTime();
+      if (target > now) {
+        setCountdown('Starts in ' + Math.ceil((target - now) / (1000 * 60 * 60 * 24)) + ' days');
+      }
+    }
   };
 
   const handleDuplicate = async () => {
@@ -45,9 +59,27 @@ export default function EventDashboard() {
     }
   };
 
+  const handleShareQR = () => {
+    if (qrRef.current) {
+      qrRef.current.toDataURL((data: string) => {
+        Share.share({
+          url: `data:image/png;base64,${data}`,
+          title: 'Join ' + event?.title,
+          message: 'Scan this QR code or click the link to join: ' + joinUrl,
+        });
+      });
+    }
+  };
+
   if (!event) return <View style={s.root}><Text style={s.loading}>Loading...</Text></View>;
 
   const joinUrl = `digi://join/${id}`;
+
+  const handleShareLink = () => {
+    Share.share({
+      message: `Join ${event.title} on Digi! ${joinUrl}`,
+    });
+  };
 
   return (
     <ScrollView style={s.root} showsVerticalScrollIndicator={false}>
@@ -61,6 +93,13 @@ export default function EventDashboard() {
       </View>
       <Text style={s.title}>{event.title}</Text>
       <Text style={s.meta}>{event.event_type.replace('_',' ')} · {event.location || 'No location'}</Text>
+      
+      {countdown && (
+        <View style={s.countdownBox}>
+          <Text style={s.countdownLabel}>COUNTDOWN</Text>
+          <Text style={s.countdownText}>{countdown}</Text>
+        </View>
+      )}
 
       {/* Stats */}
       <View style={s.stats}>
@@ -94,6 +133,10 @@ export default function EventDashboard() {
         </Pressable>
       </View>
       <View style={[s.actions, { marginBottom: 32 }]}>
+        <Pressable style={s.actionBtn} onPress={() => router.push(`/(owner)/events/${id}/album`)}>
+          <Text style={s.actionEmoji}>🖼️</Text>
+          <Text style={s.actionText}>Album</Text>
+        </Pressable>
         <Pressable style={s.actionBtn} onPress={() => router.push(`/(owner)/events/${id}/queue`)}>
           <Text style={s.actionEmoji}>🛡️</Text>
           <Text style={s.actionText}>Queue</Text>
@@ -144,7 +187,29 @@ export default function EventDashboard() {
             <Text style={s.modalDesc}>Have guests scan this QR code with their camera to join {event.title}.</Text>
             
             <View style={s.qrBox}>
-              <QRCodeDisplay value={joinUrl} size={220} />
+              <QRCodeDisplay 
+                ref={qrRef}
+                value={joinUrl} 
+                size={220} 
+                fgColor={qrColor}
+                bgColor={qrBgColor}
+              />
+            </View>
+
+            <View style={s.qrColors}>
+              <Pressable style={[s.colorDot, {backgroundColor: colors.cream}]} onPress={() => { setQrColor(colors.void); setQrBgColor(colors.cream); }} />
+              <Pressable style={[s.colorDot, {backgroundColor: colors.sage}]} onPress={() => { setQrColor(colors.void); setQrBgColor(colors.sage); }} />
+              <Pressable style={[s.colorDot, {backgroundColor: colors.amber}]} onPress={() => { setQrColor(colors.void); setQrBgColor(colors.amber); }} />
+              <Pressable style={[s.colorDot, {backgroundColor: colors.coral}]} onPress={() => { setQrColor(colors.cream); setQrBgColor(colors.coral); }} />
+            </View>
+
+            <View style={s.modalActions}>
+              <Pressable style={s.modalBtn} onPress={handleShareQR}>
+                <Text style={s.modalBtnText}>Share QR Image</Text>
+              </Pressable>
+              <Pressable style={s.modalBtnSecondary} onPress={handleShareLink}>
+                <Text style={s.modalBtnTextSecondary}>Share Link</Text>
+              </Pressable>
             </View>
 
             <Pressable style={s.modalClose} onPress={() => setShowQr(false)}>
@@ -168,6 +233,9 @@ const s = StyleSheet.create({
   statusText:{fontFamily:fonts.bodySemiBold,fontSize:10,letterSpacing:1,color:colors.sage},
   title:{fontFamily:fonts.heading,fontSize:28,color:colors.cream,marginBottom:6},
   meta:{fontFamily:fonts.body,fontSize:14,color:colors.parchment,textTransform:'capitalize',marginBottom:24},
+  countdownBox: { backgroundColor: colors.amber + '15', padding: 16, borderRadius: radius.md, marginBottom: 24, borderWidth: 1, borderColor: colors.amber + '50', alignItems: 'center' },
+  countdownLabel: { fontFamily: fonts.bodySemiBold, fontSize: 10, letterSpacing: 2, color: colors.amber, marginBottom: 4 },
+  countdownText: { fontFamily: fonts.heading, fontSize: 24, color: colors.amber },
   stats:{flexDirection:'row',gap:8,marginBottom:24},
   statCard:{flex:1,backgroundColor:colors.charcoal,borderRadius:radius.md,padding:16,alignItems:'center',borderWidth:1,borderColor:colors.smoke},
   statNum:{fontFamily:fonts.mono,fontSize:28,color:colors.amber},
@@ -189,8 +257,15 @@ const s = StyleSheet.create({
   modalOverlay: { flex: 1, backgroundColor: 'rgba(10, 8, 6, 0.9)', justifyContent: 'center', alignItems: 'center', padding: 24 },
   modalContent: { backgroundColor: colors.charcoal, borderRadius: radius.lg, padding: 32, alignItems: 'center', width: '100%', borderWidth: 1, borderColor: colors.smoke },
   modalTitle: { fontFamily: fonts.heading, fontSize: 24, color: colors.cream, marginBottom: 8 },
-  modalDesc: { fontFamily: fonts.body, fontSize: 14, color: colors.parchment, textAlign: 'center', marginBottom: 32, lineHeight: 22 },
-  qrBox: { marginBottom: 32 },
-  modalClose: { backgroundColor: colors.amber, paddingHorizontal: 32, paddingVertical: 14, borderRadius: radius.md, width: '100%', alignItems: 'center' },
-  modalCloseText: { fontFamily: fonts.headingSemiBold, fontSize: 16, color: colors.void },
+  modalDesc: { fontFamily: fonts.body, fontSize: 14, color: colors.parchment, textAlign: 'center', marginBottom: 24, lineHeight: 22 },
+  qrBox: { marginBottom: 24 },
+  qrColors: { flexDirection: 'row', gap: 12, marginBottom: 32 },
+  colorDot: { width: 32, height: 32, borderRadius: 16, borderWidth: 2, borderColor: colors.smoke },
+  modalActions: { width: '100%', gap: 12, marginBottom: 24 },
+  modalBtn: { backgroundColor: colors.amber, padding: 14, borderRadius: radius.md, alignItems: 'center' },
+  modalBtnText: { fontFamily: fonts.headingSemiBold, fontSize: 15, color: colors.void },
+  modalBtnSecondary: { backgroundColor: 'transparent', padding: 14, borderRadius: radius.md, alignItems: 'center', borderWidth: 1, borderColor: colors.smoke },
+  modalBtnTextSecondary: { fontFamily: fonts.headingSemiBold, fontSize: 15, color: colors.cream },
+  modalClose: { paddingHorizontal: 32, paddingVertical: 14, width: '100%', alignItems: 'center' },
+  modalCloseText: { fontFamily: fonts.bodySemiBold, fontSize: 16, color: colors.ash },
 });

@@ -101,7 +101,7 @@ export default function GuestJoinScreen() {
               const token = await registerForPushNotificationsAsync();
               if (token) {
                 // optionally save push token to supabase user profile
-                await supabase.from('users').update({ push_token: token }).eq('id', userId);
+                await supabase.from('participants').update({ push_token: token } as never).eq('user_id', userId).eq('event_id', id);
               }
               router.replace(`/(guest)/camera?eventId=${id}`);
             }

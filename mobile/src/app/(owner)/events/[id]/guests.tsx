@@ -16,10 +16,14 @@ export default function GuestsScreen() {
 
   useEffect(() => {
     if (!id) return;
+    loadGuests();
+  }, [id]);
+
+  const loadGuests = () => {
     supabase.from('participants').select('*').eq('event_id', id).then(({ data }) => {
       if (data) setGuests(data as unknown as Participant[]);
     });
-  }, [id]);
+  };
 
   const handleManage = (guest: Participant) => {
     Alert.alert('Manage Guest', `Manage ${guest.guest_nickname || 'Guest'}`, [
@@ -27,11 +31,20 @@ export default function GuestsScreen() {
       { text: guest.role === 'co_host' ? 'Demote to Guest' : 'Make Co-host', onPress: async () => {
         const newRole = guest.role === 'co_host' ? 'participant' : 'co_host';
         await supabase.from('participants').update({ role: newRole } as never).eq('id', guest.id);
-        setGuests((g) => g.map((p) => p.id === guest.id ? { ...p, role: newRole } as Participant : p));
+        loadGuests();
+      }},
+      { text: guest.role === 'viewer' ? 'Allow Camera' : 'Make Viewer-Only', onPress: async () => {
+        const newRole = guest.role === 'viewer' ? 'participant' : 'viewer';
+        await supabase.from('participants').update({ role: newRole } as never).eq('id', guest.id);
+        loadGuests();
       }},
       { text: 'Remove', style: 'destructive', onPress: async () => {
         await supabase.from('participants').update({ is_removed: true } as never).eq('id', guest.id);
-        setGuests((g) => g.filter((p) => p.id !== guest.id));
+        loadGuests();
+      }},
+      { text: 'Ban', style: 'destructive', onPress: async () => {
+        await supabase.from('participants').update({ is_banned: true } as never).eq('id', guest.id);
+        loadGuests();
       }},
     ]);
   };
@@ -47,7 +60,11 @@ export default function GuestsScreen() {
           <View style={s.row}>
             <View style={s.avatar}><Text style={s.avatarText}>{(g.guest_nickname || 'G')[0].toUpperCase()}</Text></View>
             <View style={{flex:1}}>
-              <Text style={s.name}>{g.guest_nickname || 'Guest'}</Text>
+              <Text style={[s.name, g.is_banned && s.bannedText, g.is_removed && s.removedText]}>
+                {g.guest_nickname || 'Guest'}
+                {g.is_banned && ' (Banned)'}
+                {g.is_removed && ' (Removed)'}
+              </Text>
               <Text style={s.meta}>{g.role} · {g.shots_used} shots</Text>
             </View>
             {g.role !== 'owner' && (
@@ -72,7 +89,9 @@ const s = StyleSheet.create({
   avatar:{width:40,height:40,borderRadius:20,backgroundColor:colors.smoke,justifyContent:'center',alignItems:'center'},
   avatarText:{fontFamily:fonts.headingSemiBold,fontSize:16,color:colors.cream},
   name:{fontFamily:fonts.bodyMedium,fontSize:15,color:colors.cream},
+  bannedText: { color: colors.coral, textDecorationLine: 'line-through' },
+  removedText: { color: colors.ash, fontStyle: 'italic' },
   meta:{fontFamily:fonts.body,fontSize:12,color:colors.ash,textTransform:'capitalize'},
-  removeBtn:{width:36,height:36,borderRadius:18,backgroundColor:colors.coral+'15',justifyContent:'center',alignItems:'center'},
-  removeText:{fontFamily:fonts.heading,fontSize:14,color:colors.coral},
+  removeBtn:{width:36,height:36,borderRadius:18,backgroundColor:colors.charcoal,justifyContent:'center',alignItems:'center',borderWidth:1,borderColor:colors.smoke},
+  removeText:{fontFamily:fonts.heading,fontSize:14,color:colors.cream},
 });

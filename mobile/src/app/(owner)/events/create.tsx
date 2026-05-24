@@ -2,9 +2,11 @@
  * Digi — Event Creation Wizard
  */
 import { useState } from 'react';
-import { View, Text, StyleSheet, Pressable, TextInput, ScrollView, Alert } from 'react-native';
+import { View, Text, StyleSheet, Pressable, TextInput, ScrollView, Alert, Image, Platform } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import * as ImagePicker from 'expo-image-picker';
 import { useEventStore } from '@/store/event.store';
 import { colors, fonts, radius } from '@/theme';
 
@@ -12,10 +14,17 @@ const EVENT_TYPES = ['wedding','birthday','debut','graduation','reunion','concer
 const CAMERA_STYLES = ['disposable','polaroid','vhs','vintage','film_grain','bw','camcorder','y2k','digicam','fisheye'];
 const REVEAL_MODES = ['instant','delayed','end_of_event','scheduled','manual'];
 
+const TEMPLATES = [
+  { name: 'Standard Wedding', type: 'wedding', shots: 36, camera: 'polaroid', reveal: 'end_of_event' },
+  { name: 'Wild Birthday', type: 'birthday', shots: 12, camera: 'disposable', reveal: 'instant' },
+  { name: 'Secret Getaway', type: 'travel', shots: 24, camera: 'film_grain', reveal: 'manual' },
+];
+
 export default function CreateEventScreen() {
   const router = useRouter();
   const { wizard, updateWizard, setWizardStep, createEvent } = useEventStore();
   const [submitting, setSubmitting] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
   const steps = ['Details','Type','Camera','Reveal','Privacy','Done'];
 
@@ -40,6 +49,18 @@ export default function CreateEventScreen() {
     }
   };
 
+  const pickImage = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.All, // allow video too
+      allowsEditing: true,
+      aspect: [16, 9],
+      quality: 0.8,
+    });
+    if (!result.canceled && result.assets && result.assets.length > 0) {
+      updateWizard({ coverPhotoUri: result.assets[0].uri });
+    }
+  };
+
   return (
     <ScrollView style={s.root} contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled">
       {/* Progress */}
@@ -54,12 +75,61 @@ export default function CreateEventScreen() {
       {wizard.step === 0 && (
         <Animated.View entering={FadeInDown} style={s.stepContent}>
           <Text style={s.heading}>What's the{'\n'}event called?</Text>
+          
+          <Pressable onPress={pickImage} style={s.coverUpload}>
+            {wizard.coverPhotoUri ? (
+              <Image source={{ uri: wizard.coverPhotoUri }} style={s.coverImage} />
+            ) : (
+              <Text style={s.coverUploadText}>+ Add Cover Photo or Video</Text>
+            )}
+          </Pressable>
+
           <TextInput style={s.input} value={wizard.title} onChangeText={(t) => updateWizard({title:t})}
             placeholder="Summer Reunion 2026" placeholderTextColor={colors.ash} />
           <TextInput style={[s.input,{height:80}]} value={wizard.description} onChangeText={(t) => updateWizard({description:t})}
             placeholder="Optional description..." placeholderTextColor={colors.ash} multiline />
           <TextInput style={s.input} value={wizard.location} onChangeText={(t) => updateWizard({location:t})}
             placeholder="Location (optional)" placeholderTextColor={colors.ash} />
+            
+          <Pressable style={s.input} onPress={() => setShowDatePicker(true)}>
+            <Text style={{color: wizard.startsAt ? colors.cream : colors.ash}}>
+              {wizard.startsAt ? new Date(wizard.startsAt).toLocaleString() : 'Select Event Date (Optional)'}
+            </Text>
+          </Pressable>
+          
+          {showDatePicker && (
+            <DateTimePicker
+              value={wizard.startsAt ? new Date(wizard.startsAt) : new Date()}
+              mode="datetime"
+              display="default"
+              onChange={(event, date) => {
+                setShowDatePicker(Platform.OS === 'ios');
+                if (date) {
+                  updateWizard({ startsAt: date.toISOString() });
+                }
+              }}
+            />
+          )}
+
+          <Text style={[s.subLabel, { marginTop: 32 }]}>START FROM TEMPLATE</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.templateScroll}>
+            {TEMPLATES.map((tmpl) => (
+              <Pressable 
+                key={tmpl.name} 
+                style={s.templateCard}
+                onPress={() => updateWizard({
+                  title: tmpl.name,
+                  eventType: tmpl.type as any,
+                  shotLimit: tmpl.shots,
+                  cameraStyle: tmpl.camera as any,
+                  revealMode: tmpl.reveal as any,
+                })}
+              >
+                <Text style={s.templateName}>{tmpl.name}</Text>
+                <Text style={s.templateMeta}>{tmpl.shots} shots · {tmpl.camera}</Text>
+              </Pressable>
+            ))}
+          </ScrollView>
         </Animated.View>
       )}
 
@@ -219,4 +289,11 @@ const s = StyleSheet.create({
   nextText:{fontFamily:fonts.headingSemiBold,fontSize:15,color:colors.void},
   draftBtn:{height:52,borderRadius:radius.md,backgroundColor:'transparent',justifyContent:'center',alignItems:'center',marginTop:12,borderWidth:1,borderColor:colors.smoke},
   draftText:{fontFamily:fonts.headingSemiBold,fontSize:15,color:colors.parchment},
+  coverUpload: { height: 160, backgroundColor: colors.charcoal, borderRadius: radius.md, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: colors.smoke, marginBottom: 12, borderStyle: 'dashed', overflow: 'hidden' },
+  coverUploadText: { fontFamily: fonts.bodySemiBold, color: colors.amber, fontSize: 13 },
+  coverImage: { width: '100%', height: '100%' },
+  templateScroll: { marginHorizontal: -24, paddingHorizontal: 24, flexDirection: 'row' },
+  templateCard: { backgroundColor: colors.charcoal, borderWidth: 1, borderColor: colors.smoke, borderRadius: radius.md, padding: 16, marginRight: 12, width: 160 },
+  templateName: { fontFamily: fonts.bodySemiBold, fontSize: 14, color: colors.cream, marginBottom: 4 },
+  templateMeta: { fontFamily: fonts.body, fontSize: 11, color: colors.ash, textTransform: 'capitalize' },
 });
